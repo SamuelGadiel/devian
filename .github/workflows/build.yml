@@ -113,7 +113,7 @@ jobs:
 
       - name: Build APK release
         working-directory: app
-        run: fvm flutter build apk --release --target-platform android-arm64
+        run: fvm flutter build apk --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
