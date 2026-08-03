@@ -19,7 +19,7 @@ Pipeline de build Flutter (via FVM) com artefatos.
 
 | Secret | Descrição |
 |---|---|
-| `BITBUCKET_SSH_KEY` | Chave privada da deploy key (ed25519) com acesso ao repo `branef/sisvisa-serr-mobile` no Bitbucket |
+| `BITBUCKET_SSH_KEY` | Chave privada SSH (`id_rsa`) com acesso ao repo `branef/sisvisa-serr-mobile` no Bitbucket — a mesma usada no container `devian`, já configurada no GitHub e Bitbucket |
 
 ## Estrutura
 
