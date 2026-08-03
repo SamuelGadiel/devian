@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout devian
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Java (temurin 17)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -24,7 +24,7 @@ jobs:
           dart pub global activate fvm
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
-      - name: Setup SSH deploy key (Bitbucket)
+      - name: Setup SSH (Bitbucket)
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.BITBUCKET_SSH_KEY }}" > ~/.ssh/id_rsa
@@ -37,8 +37,12 @@ jobs:
         run: |
           git clone --depth 1 -b develop git@bitbucket.org:branef/sisvisa-serr-mobile.git app
 
+      # ---- Caches ----
+      # FVM: cada .fvmrc gera cache próprio (multi-versões). restore-keys genérico
+      # "fvm-" permite reaproveitar cache de QUALQUER versão anterior quando o
+      # projeto muda de Flutter (fvm install só baixa o delta).
       - name: Cache FVM + pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/fvm/versions
@@ -46,12 +50,39 @@ jobs:
           key: fvm-${{ hashFiles('app/.fvmrc') }}-${{ hashFiles('app/pubspec.lock') }}
           restore-keys: |
             fvm-${{ hashFiles('app/.fvmrc') }}-
+            fvm-
+
+      # Gradle: deps + wrapper + build cache (~/.gradle). Maior ganho em builds repetidos.
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties') }}-${{ hashFiles('app/pubspec.lock') }}
+          restore-keys: |
+            gradle-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties') }}-
+            gradle-
+
+      # Android SDK: NDK + CMake são baixados pelo Gradle DURANTE o build (foi o
+      # que deixou o build em ~5min). Cachear os diretórios evita o download.
+      - name: Cache Android SDK (NDK + CMake)
+        uses: actions/cache@v5
+        with:
+          path: |
+            /usr/local/lib/android/sdk/ndk
+            /usr/local/lib/android/sdk/cmake
+          key: android-sdk-${{ hashFiles('app/android/app/build.gradle*') }}
+          restore-keys: |
+            android-sdk-
 
       - name: Install Flutter (FVM, usa .fvmrc)
         working-directory: app
         run: fvm install
 
-      - name: Accept Android licenses
+      # Licenças + pré-instalação do NDK/CMake via sdkmanager ANTES do build,
+      # para o Gradle encontrar tudo pronto (em vez de instalar no meio do build).
+      - name: Accept licenses + Install NDK/CMake
         run: |
           SDKMANAGER=""
           for d in "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/cmdline-tools" /usr/local/lib/android/sdk/cmdline-tools/latest/bin; do
@@ -62,6 +93,15 @@ jobs:
             yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
             echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
             echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+            # NDK: extrai a versão do build.gradle (robusto a mudanças futuras)
+            NDK=$(grep -hoP 'ndkVersion\s*=\s*"\K[^"]+' app/android/app/build.gradle.kts app/android/app/build.gradle 2>/dev/null | head -1)
+            if [ -n "$NDK" ]; then
+              echo "Instalando NDK $NDK..."
+              "$SDKMANAGER" "ndk;$NDK" > /dev/null 2>&1 || true
+            fi
+            # CMake: default do Flutter
+            echo "Instalando CMake 3.22.1..."
+            "$SDKMANAGER" "cmake;3.22.1" > /dev/null 2>&1 || true
           else
             echo "sdkmanager não encontrado; tentando via flutter"
             yes | fvm flutter doctor --android-licenses > /dev/null 2>&1 || true
@@ -76,7 +116,7 @@ jobs:
         run: fvm flutter build apk --release
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sisvisa-serr-mobile-apk
           path: app/build/app/outputs/flutter-apk/*.apk
