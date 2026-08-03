@@ -9,11 +9,17 @@ Pipeline de build Flutter (via FVM) com artefatos.
 - Usa **cache** do diretório de versões do FVM e do pub-cache para não rebaixar o SDK a cada execução.
 - Gera o APK release e publica como **artifact** na aba Actions.
 
-## Rodar manualmente
+## Rodar
+
+O workflow é **manual** (`workflow_dispatch`) — não dispara em push.
+
+Para buildar:
 
 1. Abra a aba **Actions**
 2. Selecione o workflow **Build Flutter APK**
 3. **Run workflow** → branch `main`
+
+(ou, via CLI: `gh workflow run "Build Flutter APK"`)
 
 ## Secrets necessários
 
