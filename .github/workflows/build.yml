@@ -116,7 +116,7 @@ jobs:
         run: fvm flutter build apk --release
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: sisvisa-serr-mobile-apk
           path: app/build/app/outputs/flutter-apk/*.apk
