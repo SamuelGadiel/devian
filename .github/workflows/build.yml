@@ -50,6 +50,7 @@ jobs:
             fvm-${{ hashFiles('app/.fvmrc') }}-
 
       - name: Install Flutter (FVM, usa .fvmrc)
+        working-directory: app
         run: fvm install
 
       - name: Accept Android licenses
