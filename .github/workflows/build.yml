@@ -29,11 +29,11 @@ jobs:
       - name: Setup SSH deploy key (Bitbucket)
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.BITBUCKET_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.BITBUCKET_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
-          git config --global user.name "devian-ci"
-          git config --global user.email "devian@users.noreply.github.com"
+          git config --global user.name "SamuelGadiel"
+          git config --global user.email "samuelgadiel@gmail.com"
 
       - name: Clone sisvisa-serr-mobile (develop)
         run: |
