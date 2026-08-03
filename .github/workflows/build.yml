@@ -64,17 +64,24 @@ jobs:
             gradle-${{ hashFiles('app/android/gradle/wrapper/gradle-wrapper.properties') }}-
             gradle-
 
-      # Android SDK: NDK + CMake são baixados pelo Gradle DURANTE o build (foi o
-      # que deixou o build em ~5min). Cachear os diretórios evita o download.
-      - name: Cache Android SDK (NDK + CMake)
+      # Android NDK: cacheia SOMENTE a versão que o build usa (extraída do
+      # build.gradle). Cachear /ndk inteiro inclui os NDKs pré-instalados do
+      # runner (dono root) e o restore quebra com "Cannot utime: Operation not
+      # permitted" (tar tenta sobrescrever arquivos do sistema).
+      - name: Extract NDK version
+        run: |
+          NDK=$(grep -hoP 'ndkVersion\s*=\s*"\K[^"]+' app/android/app/build.gradle.kts app/android/app/build.gradle 2>/dev/null | head -1)
+          if [ -z "$NDK" ]; then NDK="26.1.10909125"; fi
+          echo "NDK_VERSION=$NDK" >> $GITHUB_ENV
+          echo "NDK_VERSION=$NDK"
+
+      - name: Cache Android NDK (versão do build.gradle)
         uses: actions/cache@v5
         with:
-          path: |
-            /usr/local/lib/android/sdk/ndk
-            /usr/local/lib/android/sdk/cmake
-          key: android-sdk-${{ hashFiles('app/android/app/build.gradle*') }}
+          path: /usr/local/lib/android/sdk/ndk/${{ env.NDK_VERSION }}
+          key: android-ndk-${{ env.NDK_VERSION }}
           restore-keys: |
-            android-sdk-
+            android-ndk-
 
       - name: Install Flutter (FVM, usa .fvmrc)
         working-directory: app
