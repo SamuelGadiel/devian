@@ -1,0 +1,72 @@
+name: Build Flutter APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout devian
+        uses: actions/checkout@v4
+
+      - name: Setup Java (temurin 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install FVM
+        run: |
+          dart pub global activate fvm
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
+      - name: Setup SSH deploy key (Bitbucket)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.BITBUCKET_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+          git config --global user.name "devian-ci"
+          git config --global user.email "devian@users.noreply.github.com"
+
+      - name: Clone sisvisa-serr-mobile (develop)
+        run: |
+          git clone --depth 1 -b develop git@bitbucket.org:branef/sisvisa-serr-mobile.git app
+
+      - name: Cache FVM + pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/fvm/versions
+            ~/.pub-cache
+          key: fvm-${{ hashFiles('app/.fvmrc') }}-${{ hashFiles('app/pubspec.lock') }}
+          restore-keys: |
+            fvm-${{ hashFiles('app/.fvmrc') }}-
+
+      - name: Install Flutter (FVM, usa .fvmrc)
+        run: fvm install
+
+      - name: Accept Android licenses
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Pub get
+        working-directory: app
+        run: fvm flutter pub get
+
+      - name: Build APK release
+        working-directory: app
+        run: fvm flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sisvisa-serr-mobile-apk
+          path: app/build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error

@@ -1,0 +1,5 @@
+# Build artifacts
+app/build/
+app/.dart_tool/
+app/.fvm/
+*.apk
