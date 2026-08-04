@@ -3,3 +3,9 @@ app/build/
 app/.dart_tool/
 app/.fvm/
 *.apk
+
+# Backend
+backend/.env
+backend/.venv/
+__pycache__/
+*.pyc
