@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     container_devian: str = "devian"
     claude_cmd: str = "claude"
     claude_timeout: int = 300
+    storage_dir: str = "/home/ubuntu/devian/storage"
 
     model_config = {"env_file": ".env", "env_prefix": "DEVIAN_", "extra": "ignore"}
 

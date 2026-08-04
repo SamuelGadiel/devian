@@ -19,20 +19,19 @@ def run_claude(
     session_id: str,
     resume: bool = False,
     timeout: int | None = None,
+    workdir: str | None = None,
 ) -> str:
     """Chama `claude -p` no container devian com a sessão indicada.
 
     Sessão nova: sem --resume. Sessão já existente no container: --resume
     (senão o Claude responde "Session ID ... is already in use").
+    workdir: diretório dentro do container (ex: /workspace/sisvisa-serr-mobile)
+    para carregar a camada do projeto (CLAUDE.md / .claude).
     """
-    cmd = [
-        "docker",
-        "exec",
-        settings.container_devian,
-        settings.claude_cmd,
-        "-p",
-        prompt,
-    ]
+    cmd = ["docker", "exec"]
+    if workdir:
+        cmd += ["-w", workdir]
+    cmd += [settings.container_devian, settings.claude_cmd, "-p", prompt]
     if resume:
         # Sessão existente: --resume <id> retoma pelo id (--session-id + --resume
         # exige --fork-session nesta versão, o que quebraria a continuidade)
