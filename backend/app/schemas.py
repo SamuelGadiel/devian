@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.timezones import BrDateTime
+from app.timezones import UtcDateTime
 
 # ============================================================
 # Erro padrão — TODOS os erros respondem {"message": "..."}
@@ -91,8 +91,8 @@ class ProjectOut(BaseModel):
                     "name": "sisvisa",
                     "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
                     "branch": "develop",
-                    "created_at": "2026-08-05T16:00:00.000000-03:00",
-                    "updated_at": "2026-08-05T16:00:00.000000-03:00",
+                    "created_at": "2026-08-05T19:00:00Z",
+                    "updated_at": "2026-08-05T19:00:00Z",
                 }
             ]
         },
@@ -102,8 +102,8 @@ class ProjectOut(BaseModel):
     name: str
     repo_url: str | None
     branch: str
-    created_at: BrDateTime
-    updated_at: BrDateTime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
 
 # ============================================================
@@ -162,8 +162,8 @@ class ChatOut(BaseModel):
                     "name": "qual-a-cor",
                     "branch": "develop",
                     "status": "active",
-                    "created_at": "2026-08-05T16:00:00.000000-03:00",
-                    "updated_at": "2026-08-05T16:00:05.000000-03:00",
+                    "created_at": "2026-08-05T19:00:00Z",
+                    "updated_at": "2026-08-05T19:00:05Z",
                 }
             ]
         },
@@ -174,8 +174,8 @@ class ChatOut(BaseModel):
     name: str
     branch: str
     status: str
-    created_at: BrDateTime
-    updated_at: BrDateTime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
 
 
 # ============================================================
@@ -211,7 +211,7 @@ class MessageOut(BaseModel):
                     "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                     "role": "assistant",
                     "content": "Claro! Adicionei um botão de exportar PDF no rodapé do relatório.",
-                    "created_at": "2026-08-05T16:00:05.000000-03:00",
+                    "created_at": "2026-08-05T19:00:05Z",
                 }
             ]
         },
@@ -220,7 +220,7 @@ class MessageOut(BaseModel):
     id: UUID
     role: str = Field(description="'user' or 'assistant'")
     content: str
-    created_at: BrDateTime
+    created_at: UtcDateTime
 
 
 class MessagePage(BaseModel):
@@ -237,13 +237,13 @@ class MessagePage(BaseModel):
                             "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                             "role": "assistant",
                             "content": "Claro! Feito.",
-                            "created_at": "2026-08-05T16:00:05.000000-03:00",
+                            "created_at": "2026-08-05T19:00:05Z",
                         },
                         {
                             "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                             "role": "user",
                             "content": "Pode adicionar um botão de exportar PDF?",
-                            "created_at": "2026-08-05T16:00:04.000000-03:00",
+                            "created_at": "2026-08-05T19:00:04Z",
                         },
                     ],
                     "next_cursor": "0191f3b2-4c3a-7b00-8000-000000000013",
@@ -271,7 +271,7 @@ class ArtifactOut(BaseModel):
                     "filename": "serr-homolog-0.1.0(1).apk",
                     "size_bytes": 29413656,
                     "content_type": "application/vnd.android.package-archive",
-                    "created_at": "2026-08-05T16:10:00.000000-03:00",
+                    "created_at": "2026-08-05T19:10:00Z",
                 }
             ]
         },
@@ -281,4 +281,4 @@ class ArtifactOut(BaseModel):
     filename: str
     size_bytes: int = Field(description="Size in bytes")
     content_type: str | None
-    created_at: BrDateTime
+    created_at: UtcDateTime

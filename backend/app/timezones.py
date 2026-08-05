@@ -1,28 +1,30 @@
-"""Fuso padrão do hub: America/Sao_Paulo (BRT, UTC-3).
+"""Serialização de datas da API: ISO 8601 / RFC 3339, UTC com sufixo Z.
 
-O banco armazena timestamptz (UTC internamente). Na serialização JSON,
-os datetimes são convertidos para BRT — o app e o usuário veem horário
-de Brasília sempre.
+Toda data retornada pela API segue o padrão `2026-08-05T17:44:40Z`:
+- instante absoluto (UTC) — o cliente (app Flutter/Dart) converte pro fuso
+  local com `DateTime.parse(...).toLocal()`
+- sem fração de segundos — mais legível e suficiente para o domínio
+
+O banco continua armazenando timestamptz (UTC internamente). A infra
+(host, Postgres, container) opera em America/Sao_Paulo.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
-from zoneinfo import ZoneInfo
 
 from pydantic import PlainSerializer
 
-BRT = ZoneInfo("America/Sao_Paulo")
 
-
-def to_brt(dt: datetime) -> datetime:
-    """Converte para BRT. Datetimes naive são tratados como UTC."""
+def to_utc_z(dt: datetime) -> str:
+    """Formata um datetime como `YYYY-MM-DDTHH:MM:SSZ` (UTC)."""
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
-    return dt.astimezone(BRT)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# Campo datetime que serializa para JSON sempre em BRT (ex: 2026-08-05T18:19:44.781330-03:00)
-BrDateTime = Annotated[
+# Campo datetime que serializa para JSON sempre em UTC com Z
+# (ex: 2026-08-05T17:44:40Z)
+UtcDateTime = Annotated[
     datetime,
-    PlainSerializer(to_brt, return_type=datetime, when_used="json"),
+    PlainSerializer(to_utc_z, return_type=str, when_used="json"),
 ]

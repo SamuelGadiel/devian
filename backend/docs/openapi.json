@@ -3,7 +3,7 @@
     "info": {
         "title": "Devian Hub API",
         "description": "\nAPI do hub do **Devian** \u2014 projetos, chats (Claude Code) e artefatos de build.\n\n**Autentica\u00e7\u00e3o:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExce\u00e7\u00e3o: `GET /health`, que \u00e9 p\u00fablico.\n",
-        "version": "0.5.0"
+        "version": "0.5.1"
     },
     "servers": [
         {
@@ -1139,7 +1139,6 @@
                     },
                     "created_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Created At"
                     }
                 },
@@ -1155,7 +1154,7 @@
                 "examples": [
                     {
                         "content_type": "application/vnd.android.package-archive",
-                        "created_at": "2026-08-05T16:10:00.000000-03:00",
+                        "created_at": "2026-08-05T19:10:00Z",
                         "filename": "serr-homolog-0.1.0(1).apk",
                         "id": "0191f3b2-4c3a-7b00-8000-00000000001e",
                         "size_bytes": 29413656
@@ -1216,12 +1215,10 @@
                     },
                     "created_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Created At"
                     },
                     "updated_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Updated At"
                     }
                 },
@@ -1239,12 +1236,12 @@
                 "examples": [
                     {
                         "branch": "develop",
-                        "created_at": "2026-08-05T16:00:00.000000-03:00",
+                        "created_at": "2026-08-05T19:00:00Z",
                         "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
                         "name": "qual-a-cor",
                         "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "status": "active",
-                        "updated_at": "2026-08-05T16:00:05.000000-03:00"
+                        "updated_at": "2026-08-05T19:00:05Z"
                     }
                 ]
             },
@@ -1341,7 +1338,6 @@
                     },
                     "created_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Created At"
                     }
                 },
@@ -1356,7 +1352,7 @@
                 "examples": [
                     {
                         "content": "Claro! Adicionei um bot\u00e3o de exportar PDF no rodap\u00e9 do relat\u00f3rio.",
-                        "created_at": "2026-08-05T16:00:05.000000-03:00",
+                        "created_at": "2026-08-05T19:00:05Z",
                         "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                         "role": "assistant"
                     }
@@ -1396,13 +1392,13 @@
                         "messages": [
                             {
                                 "content": "Claro! Feito.",
-                                "created_at": "2026-08-05T16:00:05.000000-03:00",
+                                "created_at": "2026-08-05T19:00:05Z",
                                 "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                                 "role": "assistant"
                             },
                             {
                                 "content": "Pode adicionar um bot\u00e3o de exportar PDF?",
-                                "created_at": "2026-08-05T16:00:04.000000-03:00",
+                                "created_at": "2026-08-05T19:00:04Z",
                                 "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                                 "role": "user"
                             }
@@ -1490,12 +1486,10 @@
                     },
                     "created_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Created At"
                     },
                     "updated_at": {
                         "type": "string",
-                        "format": "date-time",
                         "title": "Updated At"
                     }
                 },
@@ -1512,11 +1506,11 @@
                 "examples": [
                     {
                         "branch": "develop",
-                        "created_at": "2026-08-05T16:00:00.000000-03:00",
+                        "created_at": "2026-08-05T19:00:00Z",
                         "id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "name": "sisvisa",
                         "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
-                        "updated_at": "2026-08-05T16:00:00.000000-03:00"
+                        "updated_at": "2026-08-05T19:00:00Z"
                     }
                 ]
             },
