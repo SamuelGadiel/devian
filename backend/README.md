@@ -7,41 +7,42 @@ Exposto via túnel Cloudflare `oracle-hermi`: `https://api.agapech.com.br/devian
 - **FastAPI** (Python 3.11) montado em `/devian` (cloudflared não stripa prefixo)
 - **PostgreSQL 16** — container `devian-db` (127.0.0.1:5434, rede `devian-net`)
 - **Claude Code** — `docker exec devian claude -p` (headless, workdir = pasta do projeto)
-- **Storage local** — `/home/ubuntu/devian/storage/artefatos/<projeto_id>/`
+- **Storage local** — `/home/ubuntu/devian/storage/artifacts/<project_id>/`
 
 ## Endpoints (todos sob `/devian`, exceto `/health` exigem Bearer token)
 
-### Projetos
+### Projects
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/projetos` | Lista projetos |
-| POST | `/projetos` | Cria projeto (nome, repo_url, branch_padrao, caminho_container) |
-| GET | `/projetos/{id}` | Detalhe |
-| PUT | `/projetos/{id}` | Atualiza (nome, repo_url, branch, caminho) |
-| DELETE | `/projetos/{id}` | Deleta (cascata: chats, msgs, artefatos) |
+| GET | `/projects` | Lista projetos |
+| POST | `/projects` | Cria projeto (name, repo_url, default_branch, container_path) |
+| GET | `/projects/{project_id}` | Detalhe |
+| PUT | `/projects/{project_id}` | Atualiza (name, repo_url, default_branch, container_path) |
+| DELETE | `/projects/{project_id}` | Deleta (cascata: chats, messages, artifacts) |
 
 ### Chats (1 chat = 1 sessão Claude)
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/chats?projeto_id=N` | Lista chats (recentes primeiro) |
-| POST | `/chats` | Cria chat `{projeto_id, name?}` |
-| GET | `/chats/{id}` | Detalhe |
-| DELETE | `/chats/{id}` | Deleta chat + histórico |
-| PUT | `/chats/{id}/rename` | Renomeia `{name}` |
-| GET | `/chats/{id}/mensagens?cursor=&limit=` | Histórico paginado (cursor-based) |
-| POST | `/chats/{id}/mensagens` | Envia msg `{conteudo}` — app manda SÓ a última msg |
+| GET | `/chats?project_id=N` | Lista chats (recentes primeiro) |
+| POST | `/chats` | Cria chat `{project_id, name?}` |
+| GET | `/chats/{chat_id}` | Detalhe |
+| DELETE | `/chats/{chat_id}` | Deleta chat + histórico |
+| PUT | `/chats/{chat_id}/rename` | Renomeia `{name}` |
+| GET | `/chats/{chat_id}/messages?cursor=&limit=` | Histórico paginado (cursor-based) |
+| POST | `/chats/{chat_id}/messages` | Envia msg `{content}` — app manda SÓ a última msg |
 
-### Artefatos (storage no servidor)
+### Artifacts (storage no servidor)
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/projetos/{id}/artefatos` | Lista artefatos |
-| GET | `/projetos/{id}/artefatos/{id}` | Download |
+| GET | `/projects/{project_id}/artifacts` | Lista artifacts |
+| GET | `/projects/{project_id}/artifacts/{artifact_id}` | Download |
 
 ## Regras de negócio
 - **Payload leve**: o app envia só a última mensagem. Contexto = sessão Claude no container (--resume) + histórico no Postgres.
 - **1 chat = 1 sessão**: primeira msg cria sessão (--session-id), demais retomam (--resume <id>).
-- **Slug do chat**: name default "novo-chat" vira slug da 1ª mensagem (ex: "qual-a-cor").
+- **Slug do chat**: name default "new-chat" vira slug da 1ª mensagem (ex: "qual-a-cor").
 - **Camada por projeto**: Claude roda com `-w /workspace/<projeto>` → carrega CLAUDE.md/.claude.
+- **API em inglês**: endpoints, parâmetros, payloads e responses em inglês; só textos exibidos ao usuário final ficam em português.
 
 ## Rodar
 ```bash
@@ -59,6 +60,6 @@ Produção: systemd `devian-backend.service` (porta 8088; 8080 = SearXNG).
 
 Swagger UI **v4 clássica** (assets servidos localmente, sem CDN), rota `/swagger`.
 Detalhes por endpoint: exemplos de request/response, códigos de status, schemas,
-tags por área (projetos/chats/artefatos). Clique em **Authorize** e cole o
+tags por área (projects/chats/artifacts). Clique em **Authorize** e cole o
 `DEVIAN_API_TOKEN` (sem o prefixo `Bearer `) para testar direto da página.
 Seletor de servidores: **Produção** (via túnel) ou **Local** (porta 8088).

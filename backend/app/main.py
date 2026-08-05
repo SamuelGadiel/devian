@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app import models  # noqa: F401 — registra as tabelas no metadata
 from app.db import engine
 from app.models import Base
-from app.routers import artefatos, chats, health, projetos
+from app.routers import artifacts, chats, health, projects
 
 Base.metadata.create_all(bind=engine)
 
@@ -35,19 +35,19 @@ OPENAPI_TAGS = [
         "e pelo app para checar conectividade.",
     },
     {
-        "name": "projetos",
+        "name": "projects",
         "description": "Projetos = repositórios de código. CRUD completo. "
-        "`caminho_container` define onde o Claude roda no container (camada por "
+        "`container_path` define onde o Claude roda no container (camada por "
         "projeto). Projetos são criados apenas a partir de repo existente.",
     },
     {
         "name": "chats",
         "description": "Conversas do drawer. **1 chat = 1 sessão Claude Code** "
-        "(memória contínua entre mensagens). O `name` nasce `novo-chat` e vira "
+        "(memória contínua entre mensagens). O `name` nasce `new-chat` e vira "
         "slug da primeira mensagem. Renomeação via `PUT /chats/{id}/rename`.",
     },
     {
-        "name": "artefatos",
+        "name": "artifacts",
         "description": "Arquivos gerados pelo CI (APKs, relatórios). "
         "Storage local no servidor; download direto pelo app.",
     },
@@ -55,7 +55,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.2.2",
+    version="0.3.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -69,7 +69,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.2.2",
+        version="0.3.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
@@ -136,9 +136,9 @@ def swagger_ui() -> HTMLResponse:
 
 
 hub.include_router(health.router)
-hub.include_router(projetos.router)
+hub.include_router(projects.router)
 hub.include_router(chats.router)
-hub.include_router(artefatos.router)
+hub.include_router(artifacts.router)
 
 # Estáticos do Swagger servidos localmente. Montar ANTES do hub:
 # /devian/static/* precisa ganhar do mount genérico /devian.

@@ -5,7 +5,7 @@ from app import models, schemas
 from app.auth import require_token
 from app.db import get_db
 
-router = APIRouter(prefix="/projetos", tags=["projetos"])
+router = APIRouter(prefix="/projects", tags=["projects"])
 
 UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
 NOT_FOUND = {404: {"description": "Projeto não encontrado"}}
@@ -15,110 +15,110 @@ VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
 AUTH = {"security": [{"HTTPBearer": []}]}
 
 
-def _get_projeto_or_404(db: Session, projeto_id: int) -> models.Projeto:
-    projeto = db.get(models.Projeto, projeto_id)
-    if not projeto:
+def _get_project_or_404(db: Session, project_id: int) -> models.Project:
+    project = db.get(models.Project, project_id)
+    if not project:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
-    return projeto
+    return project
 
 
 @router.get(
     "",
-    response_model=list[schemas.ProjetoOut],
-    summary="Listar projetos",
+    response_model=list[schemas.ProjectOut],
+    summary="List projects",
     response_description="Lista de projetos (ordem alfabética)",
     responses={**UNAUTHORIZED},
 )
-def listar_projetos(
+def list_projects(
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    return db.query(models.Projeto).order_by(models.Projeto.nome).all()
+    return db.query(models.Project).order_by(models.Project.name).all()
 
 
 @router.post(
     "",
-    response_model=schemas.ProjetoOut,
+    response_model=schemas.ProjectOut,
     status_code=201,
-    summary="Criar projeto",
+    summary="Create project",
     response_description="Projeto criado",
     responses={**UNAUTHORIZED, **CONFLICT, **VALIDATION},
 )
-def criar_projeto(
-    req: schemas.ProjetoCreate,
+def create_project(
+    req: schemas.ProjectCreate,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    existente = db.query(models.Projeto).filter_by(nome=req.nome).first()
-    if existente:
+    existing = db.query(models.Project).filter_by(name=req.name).first()
+    if existing:
         raise HTTPException(status_code=409, detail="Projeto já existe")
-    projeto = models.Projeto(**req.model_dump())
-    db.add(projeto)
+    project = models.Project(**req.model_dump())
+    db.add(project)
     db.commit()
-    db.refresh(projeto)
-    return projeto
+    db.refresh(project)
+    return project
 
 
 @router.get(
-    "/{projeto_id}",
-    response_model=schemas.ProjetoOut,
-    summary="Obter projeto",
+    "/{project_id}",
+    response_model=schemas.ProjectOut,
+    summary="Get project",
     response_description="Detalhes do projeto",
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
-def obter_projeto(
-    projeto_id: int,
+def get_project(
+    project_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    return _get_projeto_or_404(db, projeto_id)
+    return _get_project_or_404(db, project_id)
 
 
 @router.put(
-    "/{projeto_id}",
-    response_model=schemas.ProjetoOut,
-    summary="Atualizar projeto",
+    "/{project_id}",
+    response_model=schemas.ProjectOut,
+    summary="Update project",
     response_description="Projeto atualizado (PATCH-like: só os campos enviados)",
     responses={**UNAUTHORIZED, **NOT_FOUND, **CONFLICT, **VALIDATION},
 )
-def atualizar_projeto(
-    projeto_id: int,
-    req: schemas.ProjetoUpdate,
+def update_project(
+    project_id: int,
+    req: schemas.ProjectUpdate,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    projeto = _get_projeto_or_404(db, projeto_id)
-    dados = req.model_dump(exclude_unset=True)
-    if "nome" in dados and dados["nome"] != projeto.nome:
-        existente = (
-            db.query(models.Projeto)
+    project = _get_project_or_404(db, project_id)
+    data = req.model_dump(exclude_unset=True)
+    if "name" in data and data["name"] != project.name:
+        existing = (
+            db.query(models.Project)
             .filter(
-                models.Projeto.nome == dados["nome"],
-                models.Projeto.id != projeto_id,
+                models.Project.name == data["name"],
+                models.Project.id != project_id,
             )
             .first()
         )
-        if existente:
+        if existing:
             raise HTTPException(status_code=409, detail="Projeto já existe")
-    for campo, valor in dados.items():
-        setattr(projeto, campo, valor)
+    for field, value in data.items():
+        setattr(project, field, value)
     db.commit()
-    db.refresh(projeto)
-    return projeto
+    db.refresh(project)
+    return project
 
 
 @router.delete(
-    "/{projeto_id}",
+    "/{project_id}",
     status_code=204,
-    summary="Deletar projeto",
+    summary="Delete project",
     response_description="Projeto deletado (cascata: chats, mensagens e artefatos)",
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
-def deletar_projeto(
-    projeto_id: int,
+def delete_project(
+    project_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    projeto = _get_projeto_or_404(db, projeto_id)
-    db.delete(projeto)
+    project = _get_project_or_404(db, project_id)
+    db.delete(project)
     db.commit()

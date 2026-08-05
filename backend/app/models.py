@@ -8,23 +8,23 @@ class Base(DeclarativeBase):
     pass
 
 
-class Projeto(Base):
-    __tablename__ = "projetos"
+class Project(Base):
+    __tablename__ = "projects"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    nome: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     repo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    branch_padrao: Mapped[str] = mapped_column(String(100), default="main")
-    caminho_container: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    criado_em: Mapped[datetime] = mapped_column(
+    default_branch: Mapped[str] = mapped_column(String(100), default="main")
+    container_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     chats: Mapped[list["Chat"]] = relationship(
-        back_populates="projeto", cascade="all, delete-orphan"
+        back_populates="project", cascade="all, delete-orphan"
     )
-    artefatos: Mapped[list["Artefato"]] = relationship(
-        back_populates="projeto", cascade="all, delete-orphan"
+    artifacts: Mapped[list["Artifact"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
     )
 
 
@@ -32,54 +32,54 @@ class Chat(Base):
     __tablename__ = "chats"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    projeto_id: Mapped[int] = mapped_column(
-        ForeignKey("projetos.id", ondelete="CASCADE"), index=True
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
-    name: Mapped[str] = mapped_column(String(100), default="novo-chat")
-    session_id_claude: Mapped[str] = mapped_column(String(100), unique=True)
+    name: Mapped[str] = mapped_column(String(100), default="new-chat")
+    claude_session_id: Mapped[str] = mapped_column(String(100), unique=True)
     branch: Mapped[str] = mapped_column(String(100), default="main")
-    status: Mapped[str] = mapped_column(String(20), default="ativa")
-    criada_em: Mapped[datetime] = mapped_column(
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    atualizada_em: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    projeto: Mapped[Projeto] = relationship(back_populates="chats")
-    mensagens: Mapped[list["Mensagem"]] = relationship(
+    project: Mapped[Project] = relationship(back_populates="chats")
+    messages: Mapped[list["Message"]] = relationship(
         back_populates="chat", cascade="all, delete-orphan"
     )
 
 
-class Mensagem(Base):
-    __tablename__ = "mensagens"
+class Message(Base):
+    __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     chat_id: Mapped[int] = mapped_column(
         ForeignKey("chats.id", ondelete="CASCADE"), index=True
     )
     role: Mapped[str] = mapped_column(String(20))
-    conteudo: Mapped[str] = mapped_column(Text)
-    criada_em: Mapped[datetime] = mapped_column(
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
-    chat: Mapped[Chat] = relationship(back_populates="mensagens")
+    chat: Mapped[Chat] = relationship(back_populates="messages")
 
 
-class Artefato(Base):
-    __tablename__ = "artefatos"
+class Artifact(Base):
+    __tablename__ = "artifacts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    projeto_id: Mapped[int] = mapped_column(
-        ForeignKey("projetos.id", ondelete="CASCADE"), index=True
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
-    nome_arquivo: Mapped[str] = mapped_column(String(255))
-    tamanho: Mapped[int] = mapped_column(Integer, default=0)
+    filename: Mapped[str] = mapped_column(String(255))
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    criado_em: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
-    projeto: Mapped[Projeto] = relationship(back_populates="artefatos")
+    project: Mapped[Project] = relationship(back_populates="artifacts")

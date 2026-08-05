@@ -19,13 +19,13 @@ CLAUDE_ERROR = {502: {"description": "Erro do Claude Code no container (ClaudeEr
 CLAUDE_TIMEOUT = {504: {"description": "O Claude Code não respondeu a tempo (timeout)"}}
 
 
-def slugify(texto: str, max_len: int = 50) -> str:
+def slugify(text: str, max_len: int = 50) -> str:
     """Gera um slug legível a partir de um texto (ex: 'Qual a cor?' -> 'qual-a-cor')."""
-    texto = unicodedata.normalize("NFKD", texto)
-    texto = texto.encode("ascii", "ignore").decode("ascii")
-    texto = texto.lower()
-    texto = re.sub(r"[^a-z0-9]+", "-", texto).strip("-")
-    return texto[:max_len].strip("-") or "conversa"
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = text.lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return text[:max_len].strip("-") or "conversa"
 
 
 def _get_chat_or_404(db: Session, chat_id: int) -> models.Chat:
@@ -38,12 +38,12 @@ def _get_chat_or_404(db: Session, chat_id: int) -> models.Chat:
 @router.get(
     "",
     response_model=list[schemas.ChatOut],
-    summary="Listar chats",
+    summary="List chats",
     response_description="Chats do projeto (ou todos), mais recentes primeiro",
     responses={**UNAUTHORIZED},
 )
-def listar_chats(
-    projeto_id: int | None = Query(
+def list_chats(
+    project_id: int | None = Query(
         default=None,
         description="Se informado, filtra chats do projeto",
         examples=[1],
@@ -52,30 +52,30 @@ def listar_chats(
     _=Depends(require_token),
 ):
     q = db.query(models.Chat)
-    if projeto_id is not None:
-        q = q.filter_by(projeto_id=projeto_id)
-    return q.order_by(models.Chat.atualizada_em.desc()).all()
+    if project_id is not None:
+        q = q.filter_by(project_id=project_id)
+    return q.order_by(models.Chat.updated_at.desc()).all()
 
 
 @router.post(
     "",
     response_model=schemas.ChatOut,
     status_code=201,
-    summary="Criar chat",
+    summary="Create chat",
     response_description="Chat criado (name vira slug da 1ª mensagem se omitido)",
     responses={**UNAUTHORIZED, **NOT_FOUND, **VALIDATION},
 )
-def criar_chat(
+def create_chat(
     req: schemas.ChatCreate,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    if not db.get(models.Projeto, req.projeto_id):
+    if not db.get(models.Project, req.project_id):
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     chat = models.Chat(
-        projeto_id=req.projeto_id,
-        name=req.name or "novo-chat",
-        session_id_claude=str(uuid4()),
+        project_id=req.project_id,
+        name=req.name or "new-chat",
+        claude_session_id=str(uuid4()),
     )
     db.add(chat)
     db.commit()
@@ -86,11 +86,11 @@ def criar_chat(
 @router.get(
     "/{chat_id}",
     response_model=schemas.ChatOut,
-    summary="Obter chat",
+    summary="Get chat",
     response_description="Detalhes do chat",
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
-def obter_chat(
+def get_chat(
     chat_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
@@ -101,11 +101,11 @@ def obter_chat(
 @router.delete(
     "/{chat_id}",
     status_code=204,
-    summary="Deletar chat",
+    summary="Delete chat",
     response_description="Chat e histórico deletados (mensagens em cascata)",
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
-def deletar_chat(
+def delete_chat(
     chat_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
@@ -118,11 +118,11 @@ def deletar_chat(
 @router.put(
     "/{chat_id}/rename",
     response_model=schemas.ChatOut,
-    summary="Renomear chat",
+    summary="Rename chat",
     response_description="Chat renomeado",
     responses={**UNAUTHORIZED, **NOT_FOUND, **VALIDATION},
 )
-def renomear_chat(
+def rename_chat(
     chat_id: int,
     req: schemas.ChatRename,
     db: Session = Depends(get_db),
@@ -136,9 +136,9 @@ def renomear_chat(
 
 
 @router.get(
-    "/{chat_id}/mensagens",
-    response_model=schemas.MensagemPage,
-    summary="Histórico do chat (paginado)",
+    "/{chat_id}/messages",
+    response_model=schemas.MessagePage,
+    summary="Chat history (paginated)",
     response_description=(
         "Página de mensagens em ordem cronológica. Sem `cursor` → as "
         "**mais recentes**; com `cursor` → as anteriores àquele id (scroll p/ cima). "
@@ -146,7 +146,7 @@ def renomear_chat(
     ),
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
-def listar_mensagens(
+def list_messages(
     chat_id: int,
     cursor: int | None = Query(
         default=None,
@@ -166,20 +166,23 @@ def listar_mensagens(
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    q = db.query(models.Mensagem).filter_by(chat_id=chat_id)
+    q = db.query(models.Message).filter_by(chat_id=chat_id)
     if cursor is not None:
-        q = q.filter(models.Mensagem.id < cursor)
-    msgs = q.order_by(models.Mensagem.id.desc()).limit(limit).all()
+        q = q.filter(models.Message.id < cursor)
+    msgs = q.order_by(models.Message.id.desc()).limit(limit).all()
     msgs.reverse()  # ordem cronológica pra exibição
     next_cursor = msgs[0].id if len(msgs) == limit else None
-    return schemas.MensagemPage(mensagens=msgs, next_cursor=next_cursor)
+    return schemas.MessagePage(
+        messages=[schemas.MessageOut.model_validate(m) for m in msgs],
+        next_cursor=next_cursor,
+    )
 
 
 @router.post(
-    "/{chat_id}/mensagens",
-    response_model=schemas.MensagemOut,
+    "/{chat_id}/messages",
+    response_model=schemas.MessageOut,
     status_code=201,
-    summary="Enviar mensagem",
+    summary="Send message",
     response_description=(
         "Mensagem do usuário gravada, processada pelo Claude Code na sessão do "
         "chat e resposta do assistente gravada e retornada. Payload leve: "
@@ -187,33 +190,33 @@ def listar_mensagens(
     ),
     responses={**UNAUTHORIZED, **NOT_FOUND, **VALIDATION, **CLAUDE_ERROR, **CLAUDE_TIMEOUT},
 )
-def enviar_mensagem(
+def send_message(
     chat_id: int,
-    req: schemas.MensagemCreate,
+    req: schemas.MessageCreate,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
     chat = _get_chat_or_404(db, chat_id)
-    primeira = not db.query(models.Mensagem).filter_by(chat_id=chat.id).first()
+    is_first = not db.query(models.Message).filter_by(chat_id=chat.id).first()
 
-    db.add(models.Mensagem(chat_id=chat.id, role="user", conteudo=req.conteudo))
+    db.add(models.Message(chat_id=chat.id, role="user", content=req.content))
     db.commit()
 
     try:
-        resposta = run_claude(
-            req.conteudo,
-            chat.session_id_claude,
-            resume=not primeira,
-            workdir=chat.projeto.caminho_container if chat.projeto else None,
+        response = run_claude(
+            req.content,
+            chat.claude_session_id,
+            resume=not is_first,
+            workdir=chat.project.container_path if chat.project else None,
         )
     except ClaudeTimeout as exc:
         raise HTTPException(status_code=504, detail=str(exc)) from exc
     except ClaudeError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    db.add(models.Mensagem(chat_id=chat.id, role="assistant", conteudo=resposta))
-    if chat.name == "novo-chat":
-        chat.name = slugify(req.conteudo)
+    db.add(models.Message(chat_id=chat.id, role="assistant", content=response))
+    if chat.name == "new-chat":
+        chat.name = slugify(req.content)
     db.commit()
 
-    return db.query(models.Mensagem).order_by(models.Mensagem.id.desc()).first()
+    return db.query(models.Message).order_by(models.Message.id.desc()).first()
