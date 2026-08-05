@@ -7,6 +7,13 @@ from app.db import get_db
 
 router = APIRouter(prefix="/projetos", tags=["projetos"])
 
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
+NOT_FOUND = {404: {"description": "Projeto não encontrado"}}
+CONFLICT = {409: {"description": "Já existe um projeto com esse nome"}}
+VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
+
+AUTH = {"security": [{"HTTPBearer": []}]}
+
 
 def _get_projeto_or_404(db: Session, projeto_id: int) -> models.Projeto:
     projeto = db.get(models.Projeto, projeto_id)
@@ -15,7 +22,13 @@ def _get_projeto_or_404(db: Session, projeto_id: int) -> models.Projeto:
     return projeto
 
 
-@router.get("", response_model=list[schemas.ProjetoOut])
+@router.get(
+    "",
+    response_model=list[schemas.ProjetoOut],
+    summary="Listar projetos",
+    response_description="Lista de projetos (ordem alfabética)",
+    responses={**UNAUTHORIZED},
+)
 def listar_projetos(
     db: Session = Depends(get_db),
     _=Depends(require_token),
@@ -23,7 +36,14 @@ def listar_projetos(
     return db.query(models.Projeto).order_by(models.Projeto.nome).all()
 
 
-@router.post("", response_model=schemas.ProjetoOut, status_code=201)
+@router.post(
+    "",
+    response_model=schemas.ProjetoOut,
+    status_code=201,
+    summary="Criar projeto",
+    response_description="Projeto criado",
+    responses={**UNAUTHORIZED, **CONFLICT, **VALIDATION},
+)
 def criar_projeto(
     req: schemas.ProjetoCreate,
     db: Session = Depends(get_db),
@@ -39,7 +59,13 @@ def criar_projeto(
     return projeto
 
 
-@router.get("/{projeto_id}", response_model=schemas.ProjetoOut)
+@router.get(
+    "/{projeto_id}",
+    response_model=schemas.ProjetoOut,
+    summary="Obter projeto",
+    response_description="Detalhes do projeto",
+    responses={**UNAUTHORIZED, **NOT_FOUND},
+)
 def obter_projeto(
     projeto_id: int,
     db: Session = Depends(get_db),
@@ -48,7 +74,13 @@ def obter_projeto(
     return _get_projeto_or_404(db, projeto_id)
 
 
-@router.put("/{projeto_id}", response_model=schemas.ProjetoOut)
+@router.put(
+    "/{projeto_id}",
+    response_model=schemas.ProjetoOut,
+    summary="Atualizar projeto",
+    response_description="Projeto atualizado (PATCH-like: só os campos enviados)",
+    responses={**UNAUTHORIZED, **NOT_FOUND, **CONFLICT, **VALIDATION},
+)
 def atualizar_projeto(
     projeto_id: int,
     req: schemas.ProjetoUpdate,
@@ -60,7 +92,10 @@ def atualizar_projeto(
     if "nome" in dados and dados["nome"] != projeto.nome:
         existente = (
             db.query(models.Projeto)
-            .filter(models.Projeto.nome == dados["nome"], models.Projeto.id != projeto_id)
+            .filter(
+                models.Projeto.nome == dados["nome"],
+                models.Projeto.id != projeto_id,
+            )
             .first()
         )
         if existente:
@@ -72,7 +107,13 @@ def atualizar_projeto(
     return projeto
 
 
-@router.delete("/{projeto_id}", status_code=204)
+@router.delete(
+    "/{projeto_id}",
+    status_code=204,
+    summary="Deletar projeto",
+    response_description="Projeto deletado (cascata: chats, mensagens e artefatos)",
+    responses={**UNAUTHORIZED, **NOT_FOUND},
+)
 def deletar_projeto(
     projeto_id: int,
     db: Session = Depends(get_db),

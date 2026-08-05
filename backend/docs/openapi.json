@@ -1,0 +1,1357 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Devian Hub API",
+        "description": "\n# Devian Hub API\n\nBackend do **Devian** \u2014 o app que elimina a depend\u00eancia do MacBook.\n\nO fluxo: **app Flutter (celular) \u2192 Cloudflare (t\u00fanel `oracle-hermi`) \u2192 este backend\n(Oracle) \u2192 Claude Code (container `devian`) \u2192 Postgres (`devian-db`)**.\n\n## Autentica\u00e7\u00e3o\n\nTodos os endpoints (exceto `GET /health`) exigem um **token Bearer** fixo:\n`Authorization: Bearer <DEVIAN_API_TOKEN>`.\n\nClique em **Authorize** no topo desta p\u00e1gina e cole o token (sem o prefixo\n`Bearer `). Na fase do app, isso ser\u00e1 substitu\u00eddo por **Cloudflare Access**\n(login OTP por e-mail na borda, zero c\u00f3digo de auth aqui).\n\n## Conven\u00e7\u00f5es importantes\n\n| Conceito | Regra |\n|---|---|\n| **Payload leve** | O app envia **s\u00f3 a \u00faltima mensagem** (`POST /chats/{id}/mensagens`). O contexto da conversa vive na sess\u00e3o do Claude Code (`--resume`) + no Postgres. Hist\u00f3rico **nunca** trafega. |\n| **1 chat = 1 sess\u00e3o** | Cada chat do app \u00e9 uma sess\u00e3o Claude Code com mem\u00f3ria cont\u00ednua. A primeira mensagem cria a sess\u00e3o; as demais retomam pelo id. |\n| **Slug autom\u00e1tico** | O chat nasce `novo-chat` e vira o slug da primeira mensagem (ex: `qual-a-cor`). |\n| **Camada por projeto** | O Claude roda com `-w /workspace/<projeto>` \u2014 carrega o `CLAUDE.md`/`.claude` do reposit\u00f3rio e responde no contexto certo. |\n| **Artefatos** | Ficam no storage local do servidor (`/home/ubuntu/devian/storage/artefatos/<projeto_id>/`). |\n\n## Fluxo ponta-a-ponta (issue \u2192 APK)\n\n1. Issue no GitHub \u2192 CI roda `workflow_dispatch` no repo `devian` (clona o\n   projeto via chave SSH em runtime, builda o APK).\n2. O hub baixa o artifact do GitHub Actions e registra em\n   `GET /projetos/{id}/artefatos`.\n3. O app lista/baixa o APK e o Samuel instala. \ud83c\udf89\n\n## Servidores\n\nUse **Produ\u00e7\u00e3o** para testar daqui do navegador (via t\u00fanel) ou **Local** se\nestiver rodando o backend direto na m\u00e1quina (porta 8088).\n",
+        "contact": {
+            "name": "Samuel Gadiel",
+            "email": "samuelgadiel@gmail.com"
+        },
+        "license": {
+            "name": "MIT",
+            "identifier": "MIT"
+        },
+        "version": "0.2.1"
+    },
+    "paths": {
+        "/health": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "description": "Usado por monitoramento e pelo app para checar conectividade com o hub.",
+                "operationId": "health_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Servi\u00e7o vivo. Sem autentica\u00e7\u00e3o (p\u00fablico).",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/projetos": {
+            "get": {
+                "tags": [
+                    "projetos"
+                ],
+                "summary": "Listar projetos",
+                "operationId": "listar_projetos_projetos_get",
+                "responses": {
+                    "200": {
+                        "description": "Lista de projetos (ordem alfab\u00e9tica)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "items": {
+                                        "$ref": "#/components/schemas/ProjetoOut"
+                                    },
+                                    "type": "array",
+                                    "title": "Response Listar Projetos Projetos Get"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "projetos"
+                ],
+                "summary": "Criar projeto",
+                "operationId": "criar_projeto_projetos_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjetoCreate"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Projeto criado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjetoOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "409": {
+                        "description": "J\u00e1 existe um projeto com esse nome"
+                    },
+                    "422": {
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/projetos/{projeto_id}": {
+            "get": {
+                "tags": [
+                    "projetos"
+                ],
+                "summary": "Obter projeto",
+                "operationId": "obter_projeto_projetos__projeto_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Projeto Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalhes do projeto",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjetoOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "projetos"
+                ],
+                "summary": "Atualizar projeto",
+                "operationId": "atualizar_projeto_projetos__projeto_id__put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Projeto Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ProjetoUpdate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Projeto atualizado (PATCH-like: s\u00f3 os campos enviados)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProjetoOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto n\u00e3o encontrado"
+                    },
+                    "409": {
+                        "description": "J\u00e1 existe um projeto com esse nome"
+                    },
+                    "422": {
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "projetos"
+                ],
+                "summary": "Deletar projeto",
+                "operationId": "deletar_projeto_projetos__projeto_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Projeto Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Projeto deletado (cascata: chats, mensagens e artefatos)"
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats": {
+            "get": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Listar chats",
+                "operationId": "listar_chats_chats_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Se informado, filtra chats do projeto",
+                            "examples": [
+                                1
+                            ],
+                            "title": "Projeto Id"
+                        },
+                        "description": "Se informado, filtra chats do projeto"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chats do projeto (ou todos), mais recentes primeiro",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ChatOut"
+                                    },
+                                    "title": "Response Listar Chats Chats Get"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Criar chat",
+                "operationId": "criar_chat_chats_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Chat criado (name vira slug da 1\u00aa mensagem se omitido)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                    }
+                }
+            }
+        },
+        "/chats/{chat_id}": {
+            "get": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Obter chat",
+                "operationId": "obter_chat_chats__chat_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Chat Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalhes do chat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Deletar chat",
+                "operationId": "deletar_chat_chats__chat_id__delete",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Chat Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Chat e hist\u00f3rico deletados (mensagens em cascata)"
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{chat_id}/rename": {
+            "put": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Renomear chat",
+                "operationId": "renomear_chat_chats__chat_id__rename_put",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Chat Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChatRename"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Chat renomeado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ChatOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                    }
+                }
+            }
+        },
+        "/chats/{chat_id}/mensagens": {
+            "get": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Hist\u00f3rico do chat (paginado)",
+                "operationId": "listar_mensagens_chats__chat_id__mensagens_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Chat Id"
+                        }
+                    },
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Id da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores.",
+                            "examples": [
+                                42
+                            ],
+                            "title": "Cursor"
+                        },
+                        "description": "Id da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores."
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 200,
+                            "minimum": 1,
+                            "description": "Quantidade de mensagens por p\u00e1gina (1\u2013200)",
+                            "examples": [
+                                50
+                            ],
+                            "default": 50,
+                            "title": "Limit"
+                        },
+                        "description": "Quantidade de mensagens por p\u00e1gina (1\u2013200)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "P\u00e1gina de mensagens em ordem cronol\u00f3gica. Sem `cursor` \u2192 as **mais recentes**; com `cursor` \u2192 as anteriores \u00e0quele id (scroll p/ cima). `next_cursor: null` = in\u00edcio da conversa.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MensagemPage"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Enviar mensagem",
+                "operationId": "enviar_mensagem_chats__chat_id__mensagens_post",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Chat Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/MensagemCreate"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Mensagem do usu\u00e1rio gravada, processada pelo Claude Code na sess\u00e3o do chat e resposta do assistente gravada e retornada. Payload leve: **s\u00f3 a \u00faltima mensagem** \u2014 o contexto fica na sess\u00e3o + no banco.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MensagemOut"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Chat ou projeto n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                    },
+                    "502": {
+                        "description": "Erro do Claude Code no container (ClaudeError)"
+                    },
+                    "504": {
+                        "description": "O Claude Code n\u00e3o respondeu a tempo (timeout)"
+                    }
+                }
+            }
+        },
+        "/projetos/{projeto_id}/artefatos": {
+            "get": {
+                "tags": [
+                    "artefatos"
+                ],
+                "summary": "Listar artefatos do projeto",
+                "operationId": "listar_artefatos_projetos__projeto_id__artefatos_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Projeto Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Artefatos (APKs, relat\u00f3rios\u2026) mais recentes primeiro",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ArtefatoOut"
+                                    },
+                                    "title": "Response Listar Artefatos Projetos  Projeto Id  Artefatos Get"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/projetos/{projeto_id}/artefatos/{artefato_id}": {
+            "get": {
+                "tags": [
+                    "artefatos"
+                ],
+                "summary": "Baixar artefato",
+                "operationId": "baixar_artefato_projetos__projeto_id__artefatos__artefato_id__get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "projeto_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Projeto Id"
+                        }
+                    },
+                    {
+                        "name": "artefato_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Artefato Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stream do arquivo (APK) para instala\u00e7\u00e3o no celular. Header `Content-Disposition: attachment` com o nome do arquivo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ArtefatoOut": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "nome_arquivo": {
+                        "type": "string",
+                        "title": "Nome Arquivo"
+                    },
+                    "tamanho": {
+                        "type": "integer",
+                        "title": "Tamanho",
+                        "description": "Tamanho em bytes"
+                    },
+                    "content_type": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content Type"
+                    },
+                    "criado_em": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Criado Em"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "nome_arquivo",
+                    "tamanho",
+                    "content_type",
+                    "criado_em"
+                ],
+                "title": "ArtefatoOut",
+                "examples": [
+                    {
+                        "content_type": "application/vnd.android.package-archive",
+                        "criado_em": "2026-08-04T21:44:36.951372Z",
+                        "id": 1,
+                        "nome_arquivo": "serr-homolog-0.1.0(1).apk",
+                        "tamanho": 29413656
+                    }
+                ]
+            },
+            "ChatCreate": {
+                "properties": {
+                    "projeto_id": {
+                        "type": "integer",
+                        "title": "Projeto Id",
+                        "description": "Id do projeto ao qual o chat pertence.",
+                        "examples": [
+                            1
+                        ]
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Nome/slug do chat. Se omitido, nasce 'novo-chat' e vira o slug da primeira mensagem (ex: 'qual-a-cor').",
+                        "examples": [
+                            "nova-feature"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "projeto_id"
+                ],
+                "title": "ChatCreate",
+                "description": "Abre um chat novo dentro de um projeto.",
+                "examples": [
+                    {
+                        "name": "nova-feature",
+                        "projeto_id": 1
+                    }
+                ]
+            },
+            "ChatOut": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "projeto_id": {
+                        "type": "integer",
+                        "title": "Projeto Id"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name"
+                    },
+                    "branch": {
+                        "type": "string",
+                        "title": "Branch"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "criada_em": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Criada Em"
+                    },
+                    "atualizada_em": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Atualizada Em"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "projeto_id",
+                    "name",
+                    "branch",
+                    "status",
+                    "criada_em",
+                    "atualizada_em"
+                ],
+                "title": "ChatOut",
+                "examples": [
+                    {
+                        "atualizada_em": "2026-08-04T21:44:12.366232Z",
+                        "branch": "main",
+                        "criada_em": "2026-08-04T21:44:08.958822Z",
+                        "id": 1,
+                        "name": "qual-a-cor",
+                        "projeto_id": 1,
+                        "status": "ativa"
+                    }
+                ]
+            },
+            "ChatRename": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "title": "Name"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "ChatRename",
+                "description": "Renomeia o name (slug) exibido no drawer.",
+                "examples": [
+                    {
+                        "name": "ajuste-no-relatorio"
+                    }
+                ]
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "MensagemCreate": {
+                "properties": {
+                    "conteudo": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Conteudo",
+                        "description": "Texto da mensagem enviada \u00e0 assistente."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "conteudo"
+                ],
+                "title": "MensagemCreate",
+                "description": "A pr\u00f3xima mensagem do usu\u00e1rio. S\u00f3 isso \u2014 nada de hist\u00f3rico no payload.",
+                "examples": [
+                    {
+                        "conteudo": "Pode adicionar um bot\u00e3o de exportar PDF no relat\u00f3rio?"
+                    }
+                ]
+            },
+            "MensagemOut": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "role": {
+                        "type": "string",
+                        "title": "Role",
+                        "description": "'user' ou 'assistant'"
+                    },
+                    "conteudo": {
+                        "type": "string",
+                        "title": "Conteudo"
+                    },
+                    "criada_em": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Criada Em"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "role",
+                    "conteudo",
+                    "criada_em"
+                ],
+                "title": "MensagemOut",
+                "examples": [
+                    {
+                        "conteudo": "Claro! Adicionei um bot\u00e3o de exportar PDF no rodap\u00e9 do relat\u00f3rio.",
+                        "criada_em": "2026-08-04T21:44:12.366232Z",
+                        "id": 4,
+                        "role": "assistant"
+                    }
+                ]
+            },
+            "MensagemPage": {
+                "properties": {
+                    "mensagens": {
+                        "items": {
+                            "$ref": "#/components/schemas/MensagemOut"
+                        },
+                        "type": "array",
+                        "title": "Mensagens"
+                    },
+                    "next_cursor": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Next Cursor"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "mensagens",
+                    "next_cursor"
+                ],
+                "title": "MensagemPage",
+                "description": "P\u00e1gina do hist\u00f3rico. `next_cursor` = id da msg mais antiga desta p\u00e1gina;\npasse-o como `cursor` na pr\u00f3xima chamada para buscar as anteriores\n(scroll para cima). `null` = chegou ao in\u00edcio da conversa.",
+                "examples": [
+                    {
+                        "mensagens": [
+                            {
+                                "conteudo": "Claro! Feito.",
+                                "criada_em": "2026-08-04T21:44:12.366232Z",
+                                "id": 4,
+                                "role": "assistant"
+                            },
+                            {
+                                "conteudo": "Pode adicionar um bot\u00e3o de exportar PDF?",
+                                "criada_em": "2026-08-04T21:44:12.361597Z",
+                                "id": 3,
+                                "role": "user"
+                            }
+                        ],
+                        "next_cursor": 3
+                    }
+                ]
+            },
+            "ProjetoCreate": {
+                "properties": {
+                    "nome": {
+                        "type": "string",
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "title": "Nome",
+                        "description": "Nome curto do projeto. Vira o identificador \u00fanico.",
+                        "examples": [
+                            "sisvisa"
+                        ]
+                    },
+                    "repo_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Repo Url",
+                        "description": "URL do reposit\u00f3rio existente (git@ ou https://).",
+                        "examples": [
+                            "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
+                        ]
+                    },
+                    "branch_padrao": {
+                        "type": "string",
+                        "title": "Branch Padrao",
+                        "description": "Branch usada por padr\u00e3o nos builds.",
+                        "default": "main",
+                        "examples": [
+                            "main"
+                        ]
+                    },
+                    "caminho_container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Caminho Container",
+                        "description": "Diret\u00f3rio dentro do container `devian` onde o Claude Code roda. Faz o Claude carregar a camada do projeto (CLAUDE.md / .claude).",
+                        "examples": [
+                            "/workspace/sisvisa-serr-mobile"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "nome"
+                ],
+                "title": "ProjetoCreate",
+                "description": "Cria um projeto a partir de um reposit\u00f3rio EXISTENTE.",
+                "examples": [
+                    {
+                        "branch_padrao": "main",
+                        "caminho_container": "/workspace/sisvisa-serr-mobile",
+                        "nome": "sisvisa",
+                        "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
+                    }
+                ]
+            },
+            "ProjetoOut": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "title": "Id"
+                    },
+                    "nome": {
+                        "type": "string",
+                        "title": "Nome"
+                    },
+                    "repo_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Repo Url"
+                    },
+                    "branch_padrao": {
+                        "type": "string",
+                        "title": "Branch Padrao"
+                    },
+                    "caminho_container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Caminho Container"
+                    },
+                    "criado_em": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Criado Em"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "nome",
+                    "repo_url",
+                    "branch_padrao",
+                    "caminho_container",
+                    "criado_em"
+                ],
+                "title": "ProjetoOut",
+                "examples": [
+                    {
+                        "branch_padrao": "main",
+                        "caminho_container": "/workspace/sisvisa-serr-mobile",
+                        "criado_em": "2026-08-04T21:44:03.305361Z",
+                        "id": 1,
+                        "nome": "sisvisa",
+                        "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
+                    }
+                ]
+            },
+            "ProjetoUpdate": {
+                "properties": {
+                    "nome": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "maxLength": 100,
+                                "minLength": 1
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Nome"
+                    },
+                    "repo_url": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Repo Url"
+                    },
+                    "branch_padrao": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Branch Padrao"
+                    },
+                    "caminho_container": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Caminho Container"
+                    }
+                },
+                "type": "object",
+                "title": "ProjetoUpdate",
+                "description": "Atualiza\u00e7\u00e3o parcial \u2014 s\u00f3 envia os campos que quer mudar.",
+                "examples": [
+                    {
+                        "branch_padrao": "develop"
+                    }
+                ]
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        },
+        "securitySchemes": {
+            "HTTPBearer": {
+                "type": "http",
+                "description": "Token Bearer do Devian (DEVIAN_API_TOKEN). Cole apenas o token, sem o prefixo 'Bearer '.",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "health",
+            "description": "**P\u00fablico** \u2014 sem autentica\u00e7\u00e3o. Usado por monitoramento e pelo app para checar conectividade."
+        },
+        {
+            "name": "projetos",
+            "description": "Projetos = reposit\u00f3rios de c\u00f3digo. CRUD completo. `caminho_container` define onde o Claude roda no container (camada por projeto). Por enquanto, projetos s\u00e3o criados **apenas a partir de repo existente** (repo novo via template fica pra depois)."
+        },
+        {
+            "name": "chats",
+            "description": "Conversas do drawer. **1 chat = 1 sess\u00e3o Claude Code** (mem\u00f3ria cont\u00ednua entre mensagens). O `name` nasce `novo-chat` e vira slug da primeira mensagem. Renomea\u00e7\u00e3o via `PUT /chats/{id}/rename`."
+        },
+        {
+            "name": "mensagens",
+            "description": "Troca de mensagens com a assistente (Hermi como intermedi\u00e1ria). O app envia **s\u00f3 a \u00faltima mensagem** \u2014 contexto na sess\u00e3o do Claude + hist\u00f3rico no Postgres."
+        },
+        {
+            "name": "artefatos",
+            "description": "Arquivos gerados pelo CI (APKs, relat\u00f3rios). Storage local no servidor; download direto pelo app."
+        }
+    ],
+    "servers": [
+        {
+            "url": "https://api.agapech.com.br/devian",
+            "description": "Produ\u00e7\u00e3o \u2014 via t\u00fanel Cloudflare (oracle-hermi)"
+        },
+        {
+            "url": "/devian",
+            "description": "Local \u2014 backend direto na porta 8088"
+        }
+    ]
+}

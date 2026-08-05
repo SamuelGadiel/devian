@@ -11,6 +11,9 @@ from app.db import get_db
 
 router = APIRouter(prefix="/projetos/{projeto_id}/artefatos", tags=["artefatos"])
 
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
+NOT_FOUND = {404: {"description": "Projeto, artefato ou arquivo não encontrado"}}
+
 
 def _dir_artefatos(projeto_id: int) -> Path:
     d = Path(settings.storage_dir) / "artefatos" / str(projeto_id)
@@ -18,13 +21,18 @@ def _dir_artefatos(projeto_id: int) -> Path:
     return d
 
 
-@router.get("", response_model=list[schemas.ArtefatoOut])
+@router.get(
+    "",
+    response_model=list[schemas.ArtefatoOut],
+    summary="Listar artefatos do projeto",
+    response_description="Artefatos (APKs, relatórios…) mais recentes primeiro",
+    responses={**UNAUTHORIZED, **NOT_FOUND},
+)
 def listar_artefatos(
     projeto_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    """Lista artefatos do projeto (APKs, relatórios, etc)."""
     if not db.get(models.Projeto, projeto_id):
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return (
@@ -35,14 +43,21 @@ def listar_artefatos(
     )
 
 
-@router.get("/{artefato_id}")
+@router.get(
+    "/{artefato_id}",
+    summary="Baixar artefato",
+    response_description=(
+        "Stream do arquivo (APK) para instalação no celular. "
+        "Header `Content-Disposition: attachment` com o nome do arquivo."
+    ),
+    responses={**UNAUTHORIZED, **NOT_FOUND},
+)
 def baixar_artefato(
     projeto_id: int,
     artefato_id: int,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
-    """Baixa o arquivo do artefato (hospedado no nosso servidor)."""
     artefato = (
         db.query(models.Artefato)
         .filter_by(id=artefato_id, projeto_id=projeto_id)

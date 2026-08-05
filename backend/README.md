@@ -51,3 +51,14 @@ cp .env.example .env   # DEVIAN_API_TOKEN, DATABASE_URL, STORAGE_DIR
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8088
 ```
 Produção: systemd `devian-backend.service` (porta 8088; 8080 = SearXNG).
+
+## Documentação (Swagger)
+
+- **Swagger UI**: https://api.agapech.com.br/devian/docs
+- **ReDoc**: https://api.agapech.com.br/devian/redoc
+- **OpenAPI JSON**: https://api.agapech.com.br/devian/openapi.json (snapshot versionado em `docs/openapi.json`)
+
+Detalhes por endpoint: exemplos de request/response, códigos de status, schemas,
+tags por área (projetos/chats/mensagens/artefatos). Clique em **Authorize** e cole
+o `DEVIAN_API_TOKEN` (sem o prefixo `Bearer `) para testar direto da página.
+Seletor de servidores no topo: **Produção** (via túnel) ou **Local** (porta 8088).
