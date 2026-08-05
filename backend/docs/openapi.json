@@ -3,7 +3,7 @@
     "info": {
         "title": "Devian Hub API",
         "description": "\nAPI do hub do **Devian** \u2014 projetos, chats (Claude Code) e artefatos de build.\n\n**Autentica\u00e7\u00e3o:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExce\u00e7\u00e3o: `GET /health`, que \u00e9 p\u00fablico.\n",
-        "version": "0.5.3"
+        "version": "0.5.4"
     },
     "servers": [
         {
@@ -1205,14 +1205,6 @@
                         "type": "string",
                         "title": "Name"
                     },
-                    "branch": {
-                        "type": "string",
-                        "title": "Branch"
-                    },
-                    "status": {
-                        "type": "string",
-                        "title": "Status"
-                    },
                     "created_at": {
                         "type": "string",
                         "title": "Created At"
@@ -1227,20 +1219,16 @@
                     "id",
                     "project_id",
                     "name",
-                    "branch",
-                    "status",
                     "created_at",
                     "updated_at"
                 ],
                 "title": "ChatOut",
                 "examples": [
                     {
-                        "branch": "develop",
                         "created_at": "2026-08-05T16:00:00Z",
                         "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
                         "name": "qual-a-cor",
                         "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
-                        "status": "active",
                         "updated_at": "2026-08-05T16:00:05Z"
                     }
                 ]

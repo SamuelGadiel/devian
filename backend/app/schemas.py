@@ -160,8 +160,6 @@ class ChatOut(BaseModel):
                     "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
                     "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
                     "name": "qual-a-cor",
-                    "branch": "develop",
-                    "status": "active",
                     "created_at": "2026-08-05T16:00:00Z",
                     "updated_at": "2026-08-05T16:00:05Z",
                 }
@@ -172,8 +170,6 @@ class ChatOut(BaseModel):
     id: UUID
     project_id: UUID
     name: str
-    branch: str
-    status: str
     created_at: BrDateTime
     updated_at: BrDateTime
 

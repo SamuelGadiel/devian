@@ -39,7 +39,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.5.3",
+    version="0.5.4",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -53,7 +53,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.5.3",
+        version="0.5.4",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,

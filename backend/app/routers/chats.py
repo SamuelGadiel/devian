@@ -74,7 +74,6 @@ def create_chat(
     chat = models.Chat(
         project_id=project_id,
         name=req.name or "new-chat",
-        branch=project.branch,
         claude_session_id=str(uuid4()),
     )
     db.add(chat)
