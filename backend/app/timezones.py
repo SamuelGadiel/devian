@@ -1,54 +1,34 @@
-"""Serialização de datas da API: ISO 8601 / RFC 3339 em America/Sao_Paulo.
+"""Serialização de datas da API: hora de Brasília com sufixo Z.
 
-Toda data retornada pela API segue o padrão `2026-08-05T17:44:40-03:00`:
-- números no fuso de Brasília (o usuário lê a hora local direto no JSON)
-- com offset explícito (-03:00), ISO 8601 / RFC 3339 válido
-- o app Flutter faz `DateTime.parse(...)` direto e o Dart devolve
-  isUtc=false com a hora local do aparelho — sem precisar de .toLocal()
-- sem fração de segundos
+Formato padrão: `2026-08-05T17:44:40Z`.
 
-O banco continua armazenando timestamptz (UTC internamente).
+Contrato acordado com o app (Flutter/Dart): o número expressa o horário
+de Brasília (America/Sao_Paulo) e o sufixo Z é nominal. O app faz
+`DateTime.parse(json['created_at'])` direto e exibe o valor sem conversão.
+
+O banco continua armazenando timestamptz (UTC internamente); a conversão
+para o fuso de Brasília acontece apenas na serialização JSON.
 """
 
-from datetime import UTC, datetime, timedelta, tzinfo
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Annotated
 
 from pydantic import PlainSerializer
 
-BR_OFFSET = timedelta(hours=-3)  # America/Sao_Paulo (sem horário de verão desde 2019)
+BRT = timezone(timedelta(hours=-3), "BRT")
 
 
-class FixedOffset(tzinfo):
-    """tzinfo com offset fixo (-03:00)."""
-
-    def __init__(self, offset: timedelta, name: str) -> None:
-        self._offset = offset
-        self._name = name
-
-    def utcoffset(self, dt: datetime | None) -> timedelta:
-        return self._offset
-
-    def dst(self, dt: datetime | None) -> timedelta:
-        return timedelta(0)
-
-    def tzname(self, dt: datetime | None) -> str:
-        return self._name
-
-
-BR_TZ = FixedOffset(BR_OFFSET, "-03:00")
-
-
-def to_brt(dt: datetime) -> str:
-    """Formata um datetime como `YYYY-MM-DDTHH:MM:SS-03:00` (Brasília)."""
+def to_brt_z(dt: datetime) -> str:
+    """Formata um datetime como `YYYY-MM-DDTHH:MM:SSZ` em hora de Brasília."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
-    br = dt.astimezone(BR_TZ)
-    return f"{br.strftime('%Y-%m-%dT%H:%M:%S')}-03:00"
+    br = dt.astimezone(BRT)
+    return f"{br.strftime('%Y-%m-%dT%H:%M:%S')}Z"
 
 
-# Campo datetime que serializa para JSON em Brasília com offset
-# (ex: 2026-08-05T17:44:40-03:00)
+# Campo datetime que serializa para JSON em hora de Brasília com sufixo Z
+# (ex: 2026-08-05T17:44:40Z)
 BrDateTime = Annotated[
     datetime,
-    PlainSerializer(to_brt, return_type=str, when_used="json"),
+    PlainSerializer(to_brt_z, return_type=str, when_used="json"),
 ]
