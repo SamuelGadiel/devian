@@ -1,18 +1,20 @@
 {
-    "openapi": "3.1.0",
+    "openapi": "3.0.3",
     "info": {
         "title": "Devian Hub API",
-        "description": "\n# Devian Hub API\n\nBackend do **Devian** \u2014 o app que elimina a depend\u00eancia do MacBook.\n\nO fluxo: **app Flutter (celular) \u2192 Cloudflare (t\u00fanel `oracle-hermi`) \u2192 este backend\n(Oracle) \u2192 Claude Code (container `devian`) \u2192 Postgres (`devian-db`)**.\n\n## Autentica\u00e7\u00e3o\n\nTodos os endpoints (exceto `GET /health`) exigem um **token Bearer** fixo:\n`Authorization: Bearer <DEVIAN_API_TOKEN>`.\n\nClique em **Authorize** no topo desta p\u00e1gina e cole o token (sem o prefixo\n`Bearer `). Na fase do app, isso ser\u00e1 substitu\u00eddo por **Cloudflare Access**\n(login OTP por e-mail na borda, zero c\u00f3digo de auth aqui).\n\n## Conven\u00e7\u00f5es importantes\n\n| Conceito | Regra |\n|---|---|\n| **Payload leve** | O app envia **s\u00f3 a \u00faltima mensagem** (`POST /chats/{id}/mensagens`). O contexto da conversa vive na sess\u00e3o do Claude Code (`--resume`) + no Postgres. Hist\u00f3rico **nunca** trafega. |\n| **1 chat = 1 sess\u00e3o** | Cada chat do app \u00e9 uma sess\u00e3o Claude Code com mem\u00f3ria cont\u00ednua. A primeira mensagem cria a sess\u00e3o; as demais retomam pelo id. |\n| **Slug autom\u00e1tico** | O chat nasce `novo-chat` e vira o slug da primeira mensagem (ex: `qual-a-cor`). |\n| **Camada por projeto** | O Claude roda com `-w /workspace/<projeto>` \u2014 carrega o `CLAUDE.md`/`.claude` do reposit\u00f3rio e responde no contexto certo. |\n| **Artefatos** | Ficam no storage local do servidor (`/home/ubuntu/devian/storage/artefatos/<projeto_id>/`). |\n\n## Fluxo ponta-a-ponta (issue \u2192 APK)\n\n1. Issue no GitHub \u2192 CI roda `workflow_dispatch` no repo `devian` (clona o\n   projeto via chave SSH em runtime, builda o APK).\n2. O hub baixa o artifact do GitHub Actions e registra em\n   `GET /projetos/{id}/artefatos`.\n3. O app lista/baixa o APK e o Samuel instala. \ud83c\udf89\n\n## Servidores\n\nUse **Produ\u00e7\u00e3o** para testar daqui do navegador (via t\u00fanel) ou **Local** se\nestiver rodando o backend direto na m\u00e1quina (porta 8088).\n",
-        "contact": {
-            "name": "Samuel Gadiel",
-            "email": "samuelgadiel@gmail.com"
-        },
-        "license": {
-            "name": "MIT",
-            "identifier": "MIT"
-        },
-        "version": "0.2.1"
+        "description": "\nAPI do hub do **Devian** \u2014 projetos, chats (Claude Code) e artefatos de build.\n\n**Autentica\u00e7\u00e3o:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExce\u00e7\u00e3o: `GET /health`, que \u00e9 p\u00fablico.\n",
+        "version": "0.2.2"
     },
+    "servers": [
+        {
+            "url": "https://api.agapech.com.br/devian",
+            "description": "Produ\u00e7\u00e3o \u2014 via t\u00fanel Cloudflare (oracle-hermi)"
+        },
+        {
+            "url": "/devian",
+            "description": "Local \u2014 backend direto na porta 8088"
+        }
+    ],
     "paths": {
         "/health": {
             "get": {
@@ -1329,29 +1331,15 @@
         },
         {
             "name": "projetos",
-            "description": "Projetos = reposit\u00f3rios de c\u00f3digo. CRUD completo. `caminho_container` define onde o Claude roda no container (camada por projeto). Por enquanto, projetos s\u00e3o criados **apenas a partir de repo existente** (repo novo via template fica pra depois)."
+            "description": "Projetos = reposit\u00f3rios de c\u00f3digo. CRUD completo. `caminho_container` define onde o Claude roda no container (camada por projeto). Projetos s\u00e3o criados apenas a partir de repo existente."
         },
         {
             "name": "chats",
             "description": "Conversas do drawer. **1 chat = 1 sess\u00e3o Claude Code** (mem\u00f3ria cont\u00ednua entre mensagens). O `name` nasce `novo-chat` e vira slug da primeira mensagem. Renomea\u00e7\u00e3o via `PUT /chats/{id}/rename`."
         },
         {
-            "name": "mensagens",
-            "description": "Troca de mensagens com a assistente (Hermi como intermedi\u00e1ria). O app envia **s\u00f3 a \u00faltima mensagem** \u2014 contexto na sess\u00e3o do Claude + hist\u00f3rico no Postgres."
-        },
-        {
             "name": "artefatos",
             "description": "Arquivos gerados pelo CI (APKs, relat\u00f3rios). Storage local no servidor; download direto pelo app."
-        }
-    ],
-    "servers": [
-        {
-            "url": "https://api.agapech.com.br/devian",
-            "description": "Produ\u00e7\u00e3o \u2014 via t\u00fanel Cloudflare (oracle-hermi)"
-        },
-        {
-            "url": "/devian",
-            "description": "Local \u2014 backend direto na porta 8088"
         }
     ]
 }

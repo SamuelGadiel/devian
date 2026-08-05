@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import models  # noqa: F401 — registra as tabelas no metadata
 from app.db import engine
@@ -8,6 +12,8 @@ from app.routers import artefatos, chats, health, projetos
 
 Base.metadata.create_all(bind=engine)
 
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
 # ------------------------------------------------------------
 # App raiz: só existe pra montar o hub sob /devian.
 # O cloudflared NÃO stripa o prefixo — o backend recebe /devian/... inteiro.
@@ -15,44 +21,11 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Devian Hub", docs_url=None, redoc_url=None, openapi_url=None)
 
 DESCRIPTION = """
-# Devian Hub API
+API do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.
 
-Backend do **Devian** — o app que elimina a dependência do MacBook.
-
-O fluxo: **app Flutter (celular) → Cloudflare (túnel `oracle-hermi`) → este backend
-(Oracle) → Claude Code (container `devian`) → Postgres (`devian-db`)**.
-
-## Autenticação
-
-Todos os endpoints (exceto `GET /health`) exigem um **token Bearer** fixo:
-`Authorization: Bearer <DEVIAN_API_TOKEN>`.
-
-Clique em **Authorize** no topo desta página e cole o token (sem o prefixo
-`Bearer `). Na fase do app, isso será substituído por **Cloudflare Access**
-(login OTP por e-mail na borda, zero código de auth aqui).
-
-## Convenções importantes
-
-| Conceito | Regra |
-|---|---|
-| **Payload leve** | O app envia **só a última mensagem** (`POST /chats/{id}/mensagens`). O contexto da conversa vive na sessão do Claude Code (`--resume`) + no Postgres. Histórico **nunca** trafega. |
-| **1 chat = 1 sessão** | Cada chat do app é uma sessão Claude Code com memória contínua. A primeira mensagem cria a sessão; as demais retomam pelo id. |
-| **Slug automático** | O chat nasce `novo-chat` e vira o slug da primeira mensagem (ex: `qual-a-cor`). |
-| **Camada por projeto** | O Claude roda com `-w /workspace/<projeto>` — carrega o `CLAUDE.md`/`.claude` do repositório e responde no contexto certo. |
-| **Artefatos** | Ficam no storage local do servidor (`/home/ubuntu/devian/storage/artefatos/<projeto_id>/`). |
-
-## Fluxo ponta-a-ponta (issue → APK)
-
-1. Issue no GitHub → CI roda `workflow_dispatch` no repo `devian` (clona o
-   projeto via chave SSH em runtime, builda o APK).
-2. O hub baixa o artifact do GitHub Actions e registra em
-   `GET /projetos/{id}/artefatos`.
-3. O app lista/baixa o APK e o Samuel instala. 🎉
-
-## Servidores
-
-Use **Produção** para testar daqui do navegador (via túnel) ou **Local** se
-estiver rodando o backend direto na máquina (porta 8088).
+**Autenticação:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).
+Clique em **Authorize** e cole o token, sem o prefixo `Bearer `.
+Exceção: `GET /health`, que é público.
 """
 
 OPENAPI_TAGS = [
@@ -64,9 +37,8 @@ OPENAPI_TAGS = [
     {
         "name": "projetos",
         "description": "Projetos = repositórios de código. CRUD completo. "
-        "`caminho_container` define onde o Claude roda no container (camada por projeto). "
-        "Por enquanto, projetos são criados **apenas a partir de repo existente** "
-        "(repo novo via template fica pra depois).",
+        "`caminho_container` define onde o Claude roda no container (camada por "
+        "projeto). Projetos são criados apenas a partir de repo existente.",
     },
     {
         "name": "chats",
@@ -75,67 +47,100 @@ OPENAPI_TAGS = [
         "slug da primeira mensagem. Renomeação via `PUT /chats/{id}/rename`.",
     },
     {
-        "name": "mensagens",
-        "description": "Troca de mensagens com a assistente (Hermi como "
-        "intermediária). O app envia **só a última mensagem** — contexto na "
-        "sessão do Claude + histórico no Postgres.",
-    },
-    {
         "name": "artefatos",
-        "description": "Arquivos gerados pelo CI (APKs, relatórios). Storage "
-        "local no servidor; download direto pelo app.",
+        "description": "Arquivos gerados pelo CI (APKs, relatórios). "
+        "Storage local no servidor; download direto pelo app.",
     },
 ]
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.2.1",
+    version="0.2.2",
     description=DESCRIPTION,
-    contact={"name": "Samuel Gadiel", "email": "samuelgadiel@gmail.com"},
-    license_info={"name": "MIT", "identifier": "MIT"},
     openapi_tags=OPENAPI_TAGS,
-    swagger_ui_parameters={
-        "filter": True,  # caixa de busca de endpoints
-        "persistAuthorization": True,  # mantém o token entre recarregamentos
-        "displayRequestDuration": True,  # mostra tempo de cada request
-        "docExpansion": "list",  # já abre a lista de endpoints
-        "defaultModelsExpandDepth": 3,  # detalha os schemas
-    },
+    docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
+    redoc_url=None,  # sem ReDoc
 )
 
 
 def _custom_openapi() -> dict:
-    """Gera o schema OpenAPI com servidores explícitos (produção/local)."""
+    """OpenAPI 3.0.x (a UI v4 não renderiza 3.1) com servidores explícitos."""
     if hub.openapi_schema:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.2.1",
+        version="0.2.2",
+        openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
-        contact={"name": "Samuel Gadiel", "email": "samuelgadiel@gmail.com"},
-        license_info={"name": "MIT", "identifier": "MIT"},
         tags=OPENAPI_TAGS,
+        servers=[
+            {
+                "url": "https://api.agapech.com.br/devian",
+                "description": "Produção — via túnel Cloudflare (oracle-hermi)",
+            },
+            {
+                "url": "/devian",
+                "description": "Local — backend direto na porta 8088",
+            },
+        ],
     )
-    schema["servers"] = [
-        {
-            "url": "https://api.agapech.com.br/devian",
-            "description": "Produção — via túnel Cloudflare (oracle-hermi)",
-        },
-        {
-            "url": "/devian",
-            "description": "Local — backend direto na porta 8088",
-        },
-    ]
     hub.openapi_schema = schema
     return schema
 
 
 hub.openapi = _custom_openapi
 
+SWAGGER_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Devian Hub API — Swagger</title>
+  <link rel="stylesheet" href="/devian/static/swagger/swagger-ui.css">
+  <link rel="icon" type="image/png" href="/devian/static/swagger/favicon-32x32.png">
+  <style>
+    html { box-sizing: border-box; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="/devian/static/swagger/swagger-ui-bundle.js"></script>
+  <script src="/devian/static/swagger/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        urls: [{ url: "/devian/openapi.json", name: "Devian Hub API" }],
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout",
+        persistAuthorization: true,
+        displayRequestDuration: true
+      });
+    };
+  </script>
+</body>
+</html>
+"""
+
+
+@hub.get("/swagger", include_in_schema=False)
+def swagger_ui() -> HTMLResponse:
+    """Swagger UI clássica (v4.x), assets servidos localmente — sem CDN."""
+    return HTMLResponse(SWAGGER_HTML)
+
+
 hub.include_router(health.router)
 hub.include_router(projetos.router)
 hub.include_router(chats.router)
 hub.include_router(artefatos.router)
 
+# Estáticos do Swagger servidos localmente. Montar ANTES do hub:
+# /devian/static/* precisa ganhar do mount genérico /devian.
+app.mount("/devian/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 app.mount("/devian", hub)

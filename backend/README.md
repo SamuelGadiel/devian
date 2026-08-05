@@ -54,11 +54,11 @@ Produção: systemd `devian-backend.service` (porta 8088; 8080 = SearXNG).
 
 ## Documentação (Swagger)
 
-- **Swagger UI**: https://api.agapech.com.br/devian/docs
-- **ReDoc**: https://api.agapech.com.br/devian/redoc
+- **Swagger UI**: https://api.agapech.com.br/devian/swagger
 - **OpenAPI JSON**: https://api.agapech.com.br/devian/openapi.json (snapshot versionado em `docs/openapi.json`)
 
+Swagger UI **v4 clássica** (assets servidos localmente, sem CDN), rota `/swagger`.
 Detalhes por endpoint: exemplos de request/response, códigos de status, schemas,
-tags por área (projetos/chats/mensagens/artefatos). Clique em **Authorize** e cole
-o `DEVIAN_API_TOKEN` (sem o prefixo `Bearer `) para testar direto da página.
-Seletor de servidores no topo: **Produção** (via túnel) ou **Local** (porta 8088).
+tags por área (projetos/chats/artefatos). Clique em **Authorize** e cole o
+`DEVIAN_API_TOKEN` (sem o prefixo `Bearer `) para testar direto da página.
+Seletor de servidores: **Produção** (via túnel) ou **Local** (porta 8088).
