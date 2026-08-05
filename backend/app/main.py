@@ -39,12 +39,52 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.5.4",
+    version="0.5.5",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
     redoc_url=None,  # sem ReDoc
 )
+
+
+def _downgrade_examples(node):
+    """OpenAPI 3.0: Schema Object aceita `example` (singular), não `examples`
+    (plural — só existe em 3.1 / media types). Converte recursivamente,
+    preservando o primeiro exemplo."""
+    if isinstance(node, dict):
+        if "examples" in node and isinstance(node["examples"], list):
+            examples = node["examples"]
+            if examples:
+                node["example"] = examples[0]
+            node.pop("examples", None)
+        for value in node.values():
+            _downgrade_examples(value)
+    elif isinstance(node, list):
+        for item in node:
+            _downgrade_examples(item)
+    return node
+
+
+def _fix_nullable(node):
+    """Converte `anyOf: [T, {type: null}]` (gerado pelo Pydantic p/ campos
+    `X | None`) em `type: T, nullable: true` — o validador oficial do Swagger
+    (validator.swagger.io) rejeita `{type: null}` dentro de anyOf em Schema
+    Objects; `nullable: true` é o jeito canônico do OpenAPI 3.0."""
+    if isinstance(node, dict):
+        any_of = node.get("anyOf")
+        if isinstance(any_of, list) and len(any_of) == 2:
+            if any(m == {"type": "null"} for m in any_of):
+                real = [m for m in any_of if m != {"type": "null"}][0]
+                for key, value in real.items():
+                    node.setdefault(key, value)
+                node["nullable"] = True
+                node.pop("anyOf", None)
+        for value in list(node.values()):
+            _fix_nullable(value)
+    elif isinstance(node, list):
+        for item in node:
+            _fix_nullable(item)
+    return node
 
 
 def _custom_openapi() -> dict:
@@ -53,7 +93,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.5.4",
+        version="0.5.5",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
@@ -69,6 +109,10 @@ def _custom_openapi() -> dict:
             },
         ],
     )
+    # Remove `examples` (inválido em 3.0) e converte anyOf+null em nullable
+    # antes de servir — senão o validator.swagger.io marca o doc como INVALID.
+    schema = _downgrade_examples(schema)
+    schema = _fix_nullable(schema)
     hub.openapi_schema = schema
     return schema
 
