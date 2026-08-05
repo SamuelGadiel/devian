@@ -50,6 +50,8 @@ Exposto via túnel Cloudflare `oracle-hermi`: `https://api.agapech.com.br/devian
 - **Camada por projeto (interno)**: `container_path` é derivado do repo_url (ex: `/workspace/sisvisa-serr-mobile`), validado no container em runtime e **não é exposto na API**.
 - **API em inglês**: endpoints, parâmetros, payloads e responses em inglês; só textos exibidos ao usuário final ficam em português.
 - **IDs UUIDv7**: todos os ids (project, chat, message, artifact) são UUID v7 — ordenáveis por tempo; `next_cursor` é o UUID da msg mais antiga da página.
+- **Fuso horário**: banco armazena UTC (timestamptz), API **retorna em America/Sao_Paulo (BRT, -03:00)** — ex: `2026-08-05T17:44:40.781330-03:00`.
+- **Erros**: **todos** os erros respondem `{"message": "..."}` (nunca `detail`). Validação 422 inclui `errors: [{field, message}]`.
 
 ## Rodar
 ```bash

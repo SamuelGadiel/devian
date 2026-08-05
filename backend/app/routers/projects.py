@@ -10,10 +10,10 @@ from app.db import get_db
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
-UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
-NOT_FOUND = {404: {"description": "Projeto não encontrado"}}
-CONFLICT = {409: {"description": "Já existe um projeto com esse nome"}}
-VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido", "model": schemas.ErrorOut}}
+NOT_FOUND = {404: {"description": "Projeto não encontrado", "model": schemas.ErrorOut}}
+CONFLICT = {409: {"description": "Já existe um projeto com esse nome", "model": schemas.ErrorOut}}
+VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": schemas.ErrorOut}}
 
 
 def _derive_container_path(name: str, repo_url: str | None) -> str | None:

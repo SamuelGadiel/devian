@@ -11,9 +11,9 @@ from app.slug import slugify
 
 router = APIRouter(prefix="/projects/{project_id}/chats", tags=["Chats"])
 
-UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
-NOT_FOUND = {404: {"description": "Projeto ou chat não encontrado"}}
-VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido", "model": schemas.ErrorOut}}
+NOT_FOUND = {404: {"description": "Projeto ou chat não encontrado", "model": schemas.ErrorOut}}
+VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": schemas.ErrorOut}}
 
 
 def _get_project_or_404(db: Session, project_id: UUID) -> models.Project:

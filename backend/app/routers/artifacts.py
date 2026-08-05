@@ -12,8 +12,8 @@ from app.db import get_db
 
 router = APIRouter(prefix="/projects/{project_id}/artifacts", tags=["Artifacts"])
 
-UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
-NOT_FOUND = {404: {"description": "Projeto, artefato ou arquivo não encontrado"}}
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido", "model": schemas.ErrorOut}}
+NOT_FOUND = {404: {"description": "Projeto, artefato ou arquivo não encontrado", "model": schemas.ErrorOut}}
 
 
 def _artifacts_dir(project_id: UUID) -> Path:

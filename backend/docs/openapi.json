@@ -3,7 +3,7 @@
     "info": {
         "title": "Devian Hub API",
         "description": "\nAPI do hub do **Devian** \u2014 projetos, chats (Claude Code) e artefatos de build.\n\n**Autentica\u00e7\u00e3o:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExce\u00e7\u00e3o: `GET /health`, que \u00e9 p\u00fablico.\n",
-        "version": "0.4.0"
+        "version": "0.5.0"
     },
     "servers": [
         {
@@ -59,7 +59,14 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -96,13 +103,34 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "409": {
-                        "description": "J\u00e1 existe um projeto com esse nome"
+                        "description": "J\u00e1 existe um projeto com esse nome",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -148,10 +176,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto n\u00e3o encontrado"
+                        "description": "Projeto n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -210,16 +252,44 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto n\u00e3o encontrado"
+                        "description": "Projeto n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "409": {
-                        "description": "J\u00e1 existe um projeto com esse nome"
+                        "description": "J\u00e1 existe um projeto com esse nome",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -251,10 +321,24 @@
                         "description": "Projeto deletado (cascata: chats, mensagens e artefatos)"
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto n\u00e3o encontrado"
+                        "description": "Projeto n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -309,10 +393,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -371,13 +469,34 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -428,10 +547,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -483,10 +616,24 @@
                         "description": "Chat e hist\u00f3rico deletados (mensagens em cascata)"
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -557,13 +704,34 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -653,10 +821,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -725,19 +907,54 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto ou chat n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
+                        "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "502": {
-                        "description": "Erro do Claude Code no container (ClaudeError)"
+                        "description": "Erro do Claude Code no container (ClaudeError)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "504": {
-                        "description": "O Claude Code n\u00e3o respondeu a tempo (timeout)"
+                        "description": "O Claude Code n\u00e3o respondeu a tempo (timeout)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -782,10 +999,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado"
+                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -844,10 +1075,24 @@
                         }
                     },
                     "401": {
-                        "description": "Token Bearer ausente ou inv\u00e1lido"
+                        "description": "Token Bearer ausente ou inv\u00e1lido",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "404": {
-                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado"
+                        "description": "Projeto, artefato ou arquivo n\u00e3o encontrado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorOut"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -910,7 +1155,7 @@
                 "examples": [
                     {
                         "content_type": "application/vnd.android.package-archive",
-                        "created_at": "2026-08-05T19:10:00.000000Z",
+                        "created_at": "2026-08-05T16:10:00.000000-03:00",
                         "filename": "serr-homolog-0.1.0(1).apk",
                         "id": "0191f3b2-4c3a-7b00-8000-00000000001e",
                         "size_bytes": 29413656
@@ -994,12 +1239,12 @@
                 "examples": [
                     {
                         "branch": "develop",
-                        "created_at": "2026-08-05T19:00:00.000000Z",
+                        "created_at": "2026-08-05T16:00:00.000000-03:00",
                         "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
                         "name": "qual-a-cor",
                         "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "status": "active",
-                        "updated_at": "2026-08-05T19:00:05.000000Z"
+                        "updated_at": "2026-08-05T16:00:05.000000-03:00"
                     }
                 ]
             },
@@ -1021,6 +1266,26 @@
                 "examples": [
                     {
                         "name": "ajuste-no-relatorio"
+                    }
+                ]
+            },
+            "ErrorOut": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "title": "Message",
+                        "description": "Mensagem de erro (em portugu\u00eas)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "message"
+                ],
+                "title": "ErrorOut",
+                "description": "Resposta de erro padr\u00e3o da API.",
+                "examples": [
+                    {
+                        "message": "Projeto n\u00e3o encontrado"
                     }
                 ]
             },
@@ -1091,7 +1356,7 @@
                 "examples": [
                     {
                         "content": "Claro! Adicionei um bot\u00e3o de exportar PDF no rodap\u00e9 do relat\u00f3rio.",
-                        "created_at": "2026-08-05T19:00:05.000000Z",
+                        "created_at": "2026-08-05T16:00:05.000000-03:00",
                         "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                         "role": "assistant"
                     }
@@ -1131,13 +1396,13 @@
                         "messages": [
                             {
                                 "content": "Claro! Feito.",
-                                "created_at": "2026-08-05T19:00:05.000000Z",
+                                "created_at": "2026-08-05T16:00:05.000000-03:00",
                                 "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                                 "role": "assistant"
                             },
                             {
                                 "content": "Pode adicionar um bot\u00e3o de exportar PDF?",
-                                "created_at": "2026-08-05T19:00:04.000000Z",
+                                "created_at": "2026-08-05T16:00:04.000000-03:00",
                                 "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                                 "role": "user"
                             }
@@ -1247,11 +1512,11 @@
                 "examples": [
                     {
                         "branch": "develop",
-                        "created_at": "2026-08-05T19:00:00.000000Z",
+                        "created_at": "2026-08-05T16:00:00.000000-03:00",
                         "id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "name": "sisvisa",
                         "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
-                        "updated_at": "2026-08-05T19:00:00.000000Z"
+                        "updated_at": "2026-08-05T16:00:00.000000-03:00"
                     }
                 ]
             },

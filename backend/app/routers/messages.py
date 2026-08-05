@@ -13,11 +13,11 @@ router = APIRouter(
     prefix="/projects/{project_id}/chats/{chat_id}/messages", tags=["Messages"]
 )
 
-UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
-NOT_FOUND = {404: {"description": "Projeto ou chat não encontrado"}}
-VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
-CLAUDE_ERROR = {502: {"description": "Erro do Claude Code no container (ClaudeError)"}}
-CLAUDE_TIMEOUT = {504: {"description": "O Claude Code não respondeu a tempo (timeout)"}}
+UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido", "model": schemas.ErrorOut}}
+NOT_FOUND = {404: {"description": "Projeto ou chat não encontrado", "model": schemas.ErrorOut}}
+VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": schemas.ErrorOut}}
+CLAUDE_ERROR = {502: {"description": "Erro do Claude Code no container (ClaudeError)", "model": schemas.ErrorOut}}
+CLAUDE_TIMEOUT = {504: {"description": "O Claude Code não respondeu a tempo (timeout)", "model": schemas.ErrorOut}}
 
 
 def _get_chat_in_project_or_404(

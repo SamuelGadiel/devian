@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import models  # noqa: F401 — registra as tabelas no metadata
@@ -38,7 +39,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.4.0",
+    version="0.5.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -52,7 +53,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.4.0",
+        version="0.5.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
@@ -123,6 +124,50 @@ hub.include_router(projects.router)
 hub.include_router(chats.router)
 hub.include_router(messages.router)
 hub.include_router(artifacts.router)
+
+
+# ------------------------------------------------------------
+# Erros: TODOS respondem {"message": "..."} (padrão do hub)
+# ------------------------------------------------------------
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+        headers=exc.headers,
+    )
+
+
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    errors = []
+    for err in exc.errors():
+        loc = [str(x) for x in err.get("loc", []) if x != "body"]
+        errors.append(
+            {
+                "field": ".".join(loc) if loc else None,
+                "message": err.get("msg"),
+            }
+        )
+    return JSONResponse(
+        status_code=422,
+        content={"message": "Corpo da requisição inválido", "errors": errors},
+    )
+
+
+async def not_found_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """404 de rota inexistente — levantado com a classe base do Starlette."""
+    detail = exc.detail if isinstance(exc.detail, str) else "Rota não encontrada"
+    message = "Rota não encontrada" if detail == "Not Found" else detail
+    return JSONResponse(status_code=404, content={"message": message})
+
+
+# Registra nos DOIS apps: o 404 de rota inexistente é levantado pelo app raiz,
+# os erros de negócio pelo hub montado em /devian.
+for _app in (app, hub):
+    _app.add_exception_handler(HTTPException, http_exception_handler)
+    _app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    _app.add_exception_handler(404, not_found_handler)
 
 # Estáticos do Swagger servidos localmente. Montar ANTES do hub:
 # /devian/static/* precisa ganhar do mount genérico /devian.

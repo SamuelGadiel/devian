@@ -3,6 +3,28 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.timezones import BrDateTime
+
+# ============================================================
+# Erro padrão — TODOS os erros respondem {"message": "..."}
+# ============================================================
+
+
+class ErrorOut(BaseModel):
+    """Resposta de erro padrão da API."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "message": "Projeto não encontrado",
+                }
+            ]
+        }
+    )
+
+    message: str = Field(description="Mensagem de erro (em português)")
+
 # ============================================================
 # Projects
 # ============================================================
@@ -69,8 +91,8 @@ class ProjectOut(BaseModel):
                     "name": "sisvisa",
                     "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
                     "branch": "develop",
-                    "created_at": "2026-08-05T19:00:00.000000Z",
-                    "updated_at": "2026-08-05T19:00:00.000000Z",
+                    "created_at": "2026-08-05T16:00:00.000000-03:00",
+                    "updated_at": "2026-08-05T16:00:00.000000-03:00",
                 }
             ]
         },
@@ -80,8 +102,8 @@ class ProjectOut(BaseModel):
     name: str
     repo_url: str | None
     branch: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: BrDateTime
+    updated_at: BrDateTime
 
 
 # ============================================================
@@ -140,8 +162,8 @@ class ChatOut(BaseModel):
                     "name": "qual-a-cor",
                     "branch": "develop",
                     "status": "active",
-                    "created_at": "2026-08-05T19:00:00.000000Z",
-                    "updated_at": "2026-08-05T19:00:05.000000Z",
+                    "created_at": "2026-08-05T16:00:00.000000-03:00",
+                    "updated_at": "2026-08-05T16:00:05.000000-03:00",
                 }
             ]
         },
@@ -152,8 +174,8 @@ class ChatOut(BaseModel):
     name: str
     branch: str
     status: str
-    created_at: datetime
-    updated_at: datetime
+    created_at: BrDateTime
+    updated_at: BrDateTime
 
 
 # ============================================================
@@ -189,7 +211,7 @@ class MessageOut(BaseModel):
                     "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                     "role": "assistant",
                     "content": "Claro! Adicionei um botão de exportar PDF no rodapé do relatório.",
-                    "created_at": "2026-08-05T19:00:05.000000Z",
+                    "created_at": "2026-08-05T16:00:05.000000-03:00",
                 }
             ]
         },
@@ -198,7 +220,7 @@ class MessageOut(BaseModel):
     id: UUID
     role: str = Field(description="'user' or 'assistant'")
     content: str
-    created_at: datetime
+    created_at: BrDateTime
 
 
 class MessagePage(BaseModel):
@@ -215,13 +237,13 @@ class MessagePage(BaseModel):
                             "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                             "role": "assistant",
                             "content": "Claro! Feito.",
-                            "created_at": "2026-08-05T19:00:05.000000Z",
+                            "created_at": "2026-08-05T16:00:05.000000-03:00",
                         },
                         {
                             "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                             "role": "user",
                             "content": "Pode adicionar um botão de exportar PDF?",
-                            "created_at": "2026-08-05T19:00:04.000000Z",
+                            "created_at": "2026-08-05T16:00:04.000000-03:00",
                         },
                     ],
                     "next_cursor": "0191f3b2-4c3a-7b00-8000-000000000013",
@@ -249,7 +271,7 @@ class ArtifactOut(BaseModel):
                     "filename": "serr-homolog-0.1.0(1).apk",
                     "size_bytes": 29413656,
                     "content_type": "application/vnd.android.package-archive",
-                    "created_at": "2026-08-05T19:10:00.000000Z",
+                    "created_at": "2026-08-05T16:10:00.000000-03:00",
                 }
             ]
         },
@@ -259,4 +281,4 @@ class ArtifactOut(BaseModel):
     filename: str
     size_bytes: int = Field(description="Size in bytes")
     content_type: str | None
-    created_at: datetime
+    created_at: BrDateTime
