@@ -50,7 +50,7 @@ Exposto via túnel Cloudflare `oracle-hermi`: `https://api.agapech.com.br/devian
 - **Camada por projeto (interno)**: `container_path` é derivado do repo_url (ex: `/workspace/sisvisa-serr-mobile`), validado no container em runtime e **não é exposto na API**.
 - **API em inglês**: endpoints, parâmetros, payloads e responses em inglês; só textos exibidos ao usuário final ficam em português.
 - **IDs UUIDv7**: todos os ids (project, chat, message, artifact) são UUID v7 — ordenáveis por tempo; `next_cursor` é o UUID da msg mais antiga da página.
-- **Fuso horário**: banco armazena UTC (timestamptz); API retorna **todas** as datas em **ISO 8601 / RFC 3339 UTC** — `2026-08-05T20:44:40Z` (sem fração). O app converte pro fuso local com `DateTime.parse(...).toLocal()`. A infra (host, Postgres, container) opera em America/Sao_Paulo.
+- **Fuso horário**: banco armazena UTC (timestamptz); API retorna **todas** as datas em **ISO 8601 / RFC 3339 em Brasília** — `2026-08-05T17:44:40-03:00` (sem fração). O app faz `DateTime.parse(...)` direto (Dart devolve `isUtc=false` com a hora local do aparelho — sem `.toLocal()`). A infra (host, Postgres, container) opera em America/Sao_Paulo.
 - **Erros**: **todos** os erros respondem `{"message": "..."}` (nunca `detail`). Validação 422 inclui `errors: [{field, message}]`.
 
 ## Rodar
