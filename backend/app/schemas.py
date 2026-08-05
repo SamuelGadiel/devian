@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,8 +17,7 @@ class ProjectCreate(BaseModel):
                 {
                     "name": "sisvisa",
                     "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
-                    "default_branch": "main",
-                    "container_path": "/workspace/sisvisa-serr-mobile",
+                    "branch": "develop",
                 }
             ]
         }
@@ -34,18 +34,10 @@ class ProjectCreate(BaseModel):
         description="URL of the existing repository (git@ or https://).",
         examples=["git@bitbucket.org:branef/sisvisa-serr-mobile.git"],
     )
-    default_branch: str = Field(
+    branch: str = Field(
         default="main",
-        description="Branch used by default in builds.",
-        examples=["main"],
-    )
-    container_path: str | None = Field(
-        default=None,
-        description=(
-            "Directory inside the `devian` container where Claude Code runs. "
-            "Makes Claude load the project layer (CLAUDE.md / .claude)."
-        ),
-        examples=["/workspace/sisvisa-serr-mobile"],
+        description="Branch the project works on (used by builds and new chats).",
+        examples=["develop"],
     )
 
 
@@ -56,7 +48,7 @@ class ProjectUpdate(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "default_branch": "develop",
+                    "branch": "develop",
                 }
             ]
         }
@@ -64,8 +56,7 @@ class ProjectUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100)
     repo_url: str | None = None
-    default_branch: str | None = None
-    container_path: str | None = None
+    branch: str | None = None
 
 
 class ProjectOut(BaseModel):
@@ -74,48 +65,43 @@ class ProjectOut(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "id": 1,
+                    "id": "0191f3b2-4c3a-7b00-8000-000000000001",
                     "name": "sisvisa",
                     "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
-                    "default_branch": "main",
-                    "container_path": "/workspace/sisvisa-serr-mobile",
-                    "created_at": "2026-08-04T21:44:03.305361Z",
+                    "branch": "develop",
+                    "created_at": "2026-08-05T19:00:00.000000Z",
+                    "updated_at": "2026-08-05T19:00:00.000000Z",
                 }
             ]
         },
     )
 
-    id: int
+    id: UUID
     name: str
     repo_url: str | None
-    default_branch: str
-    container_path: str | None
+    branch: str
     created_at: datetime
+    updated_at: datetime
 
 
 # ============================================================
-# Chats
+# Chats (aninhados em /projects/{project_id}/chats)
 # ============================================================
 
 
 class ChatCreate(BaseModel):
-    """Opens a new chat inside a project."""
+    """Opens a new chat inside a project (project comes from the URL)."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "project_id": 1,
                     "name": "nova-feature",
                 }
             ]
         }
     )
 
-    project_id: int = Field(
-        description="ID of the project the chat belongs to.",
-        examples=[1],
-    )
     name: str | None = Field(
         default=None,
         max_length=100,
@@ -149,20 +135,20 @@ class ChatOut(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "id": 1,
-                    "project_id": 1,
+                    "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
+                    "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
                     "name": "qual-a-cor",
-                    "branch": "main",
+                    "branch": "develop",
                     "status": "active",
-                    "created_at": "2026-08-04T21:44:08.958822Z",
-                    "updated_at": "2026-08-04T21:44:12.366232Z",
+                    "created_at": "2026-08-05T19:00:00.000000Z",
+                    "updated_at": "2026-08-05T19:00:05.000000Z",
                 }
             ]
         },
     )
 
-    id: int
-    project_id: int
+    id: UUID
+    project_id: UUID
     name: str
     branch: str
     status: str
@@ -171,7 +157,7 @@ class ChatOut(BaseModel):
 
 
 # ============================================================
-# Messages
+# Messages (aninhadas em /projects/{project_id}/chats/{chat_id}/messages)
 # ============================================================
 
 
@@ -200,25 +186,25 @@ class MessageOut(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "id": 4,
+                    "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                     "role": "assistant",
                     "content": "Claro! Adicionei um botão de exportar PDF no rodapé do relatório.",
-                    "created_at": "2026-08-04T21:44:12.366232Z",
+                    "created_at": "2026-08-05T19:00:05.000000Z",
                 }
             ]
         },
     )
 
-    id: int
+    id: UUID
     role: str = Field(description="'user' or 'assistant'")
     content: str
     created_at: datetime
 
 
 class MessagePage(BaseModel):
-    """History page. `next_cursor` = id of the oldest message in this page;
-    pass it as `cursor` on the next call to fetch older ones (scroll up).
-    `null` = beginning of the conversation reached."""
+    """History page. `next_cursor` = id (UUID) of the oldest message in this
+    page; pass it as `cursor` on the next call to fetch older ones
+    (scroll up). `null` = beginning of the conversation reached."""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -226,30 +212,30 @@ class MessagePage(BaseModel):
                 {
                     "messages": [
                         {
-                            "id": 4,
+                            "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                             "role": "assistant",
                             "content": "Claro! Feito.",
-                            "created_at": "2026-08-04T21:44:12.366232Z",
+                            "created_at": "2026-08-05T19:00:05.000000Z",
                         },
                         {
-                            "id": 3,
+                            "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                             "role": "user",
                             "content": "Pode adicionar um botão de exportar PDF?",
-                            "created_at": "2026-08-04T21:44:12.361597Z",
+                            "created_at": "2026-08-05T19:00:04.000000Z",
                         },
                     ],
-                    "next_cursor": 3,
+                    "next_cursor": "0191f3b2-4c3a-7b00-8000-000000000013",
                 }
             ]
         }
     )
 
     messages: list[MessageOut]
-    next_cursor: int | None
+    next_cursor: UUID | None
 
 
 # ============================================================
-# Artifacts
+# Artifacts (aninhados em /projects/{project_id}/artifacts)
 # ============================================================
 
 
@@ -259,17 +245,17 @@ class ArtifactOut(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "id": 1,
+                    "id": "0191f3b2-4c3a-7b00-8000-00000000001e",
                     "filename": "serr-homolog-0.1.0(1).apk",
                     "size_bytes": 29413656,
                     "content_type": "application/vnd.android.package-archive",
-                    "created_at": "2026-08-04T21:44:36.951372Z",
+                    "created_at": "2026-08-05T19:10:00.000000Z",
                 }
             ]
         },
     )
 
-    id: int
+    id: UUID
     filename: str
     size_bytes: int = Field(description="Size in bytes")
     content_type: str | None

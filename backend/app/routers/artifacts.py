@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -9,13 +10,13 @@ from app.auth import require_token
 from app.config import settings
 from app.db import get_db
 
-router = APIRouter(prefix="/projects/{project_id}/artifacts", tags=["artifacts"])
+router = APIRouter(prefix="/projects/{project_id}/artifacts", tags=["Artifacts"])
 
 UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
 NOT_FOUND = {404: {"description": "Projeto, artefato ou arquivo não encontrado"}}
 
 
-def _artifacts_dir(project_id: int) -> Path:
+def _artifacts_dir(project_id: UUID) -> Path:
     d = Path(settings.storage_dir) / "artifacts" / str(project_id)
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -29,7 +30,7 @@ def _artifacts_dir(project_id: int) -> Path:
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
 def list_artifacts(
-    project_id: int,
+    project_id: UUID,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
@@ -53,8 +54,8 @@ def list_artifacts(
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
 def download_artifact(
-    project_id: int,
-    artifact_id: int,
+    project_id: UUID,
+    artifact_id: UUID,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):

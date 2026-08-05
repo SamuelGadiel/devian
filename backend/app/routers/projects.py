@@ -1,3 +1,6 @@
+import re
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,17 +8,28 @@ from app import models, schemas
 from app.auth import require_token
 from app.db import get_db
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix="/projects", tags=["Projects"])
 
 UNAUTHORIZED = {401: {"description": "Token Bearer ausente ou inválido"}}
 NOT_FOUND = {404: {"description": "Projeto não encontrado"}}
 CONFLICT = {409: {"description": "Já existe um projeto com esse nome"}}
 VALIDATION = {422: {"description": "Corpo da requisição inválido"}}
 
-AUTH = {"security": [{"HTTPBearer": []}]}
+
+def _derive_container_path(name: str, repo_url: str | None) -> str | None:
+    """Deriva o diretório interno do container a partir do repo (ou do nome).
+
+    Interno — nunca exposto na API. Ex.: repo `.../sisvisa-serr-mobile.git`
+    → `/workspace/sisvisa-serr-mobile`.
+    """
+    if repo_url:
+        m = re.search(r"[:/]([^/:]+?)(?:\.git)?/?$", repo_url.strip())
+        if m:
+            return f"/workspace/{m.group(1)}"
+    return f"/workspace/{name}"
 
 
-def _get_project_or_404(db: Session, project_id: int) -> models.Project:
+def _get_project_or_404(db: Session, project_id: UUID) -> models.Project:
     project = db.get(models.Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
@@ -52,7 +66,12 @@ def create_project(
     existing = db.query(models.Project).filter_by(name=req.name).first()
     if existing:
         raise HTTPException(status_code=409, detail="Projeto já existe")
-    project = models.Project(**req.model_dump())
+    project = models.Project(
+        name=req.name,
+        repo_url=req.repo_url,
+        branch=req.branch,
+        container_path=_derive_container_path(req.name, req.repo_url),
+    )
     db.add(project)
     db.commit()
     db.refresh(project)
@@ -67,7 +86,7 @@ def create_project(
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
 def get_project(
-    project_id: int,
+    project_id: UUID,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):
@@ -82,7 +101,7 @@ def get_project(
     responses={**UNAUTHORIZED, **NOT_FOUND, **CONFLICT, **VALIDATION},
 )
 def update_project(
-    project_id: int,
+    project_id: UUID,
     req: schemas.ProjectUpdate,
     db: Session = Depends(get_db),
     _=Depends(require_token),
@@ -115,7 +134,7 @@ def update_project(
     responses={**UNAUTHORIZED, **NOT_FOUND},
 )
 def delete_project(
-    project_id: int,
+    project_id: UUID,
     db: Session = Depends(get_db),
     _=Depends(require_token),
 ):

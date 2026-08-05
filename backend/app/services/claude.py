@@ -14,6 +14,35 @@ class ClaudeTimeout(Exception):
     pass
 
 
+def _dir_exists_in_container(path: str) -> bool:
+    """Checa se um diretório existe dentro do container devian."""
+    try:
+        proc = subprocess.run(
+            ["docker", "exec", settings.container_devian, "test", "-d", path],
+            capture_output=True,
+            timeout=10,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
+def resolve_workdir(project) -> str | None:
+    """Resolve o workdir do Claude no container para um projeto.
+
+    Interno — usa o `container_path` salvo se existir no container; senão
+    tenta `/workspace/<name>`; senão roda sem workdir (raiz).
+    """
+    candidates: list[str] = []
+    if project.container_path:
+        candidates.append(project.container_path)
+    candidates.append(f"/workspace/{project.name}")
+    for candidate in candidates:
+        if _dir_exists_in_container(candidate):
+            return candidate
+    return None
+
+
 def run_claude(
     prompt: str,
     session_id: str,

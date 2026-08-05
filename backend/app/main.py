@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app import models  # noqa: F401 — registra as tabelas no metadata
 from app.db import engine
 from app.models import Base
-from app.routers import artifacts, chats, health, projects
+from app.routers import artifacts, chats, health, messages, projects
 
 Base.metadata.create_all(bind=engine)
 
@@ -29,33 +29,16 @@ Exceção: `GET /health`, que é público.
 """
 
 OPENAPI_TAGS = [
-    {
-        "name": "health",
-        "description": "**Público** — sem autenticação. Usado por monitoramento "
-        "e pelo app para checar conectividade.",
-    },
-    {
-        "name": "projects",
-        "description": "Projetos = repositórios de código. CRUD completo. "
-        "`container_path` define onde o Claude roda no container (camada por "
-        "projeto). Projetos são criados apenas a partir de repo existente.",
-    },
-    {
-        "name": "chats",
-        "description": "Conversas do drawer. **1 chat = 1 sessão Claude Code** "
-        "(memória contínua entre mensagens). O `name` nasce `new-chat` e vira "
-        "slug da primeira mensagem. Renomeação via `PUT /chats/{id}/rename`.",
-    },
-    {
-        "name": "artifacts",
-        "description": "Arquivos gerados pelo CI (APKs, relatórios). "
-        "Storage local no servidor; download direto pelo app.",
-    },
+    {"name": "Projects"},
+    {"name": "Chats"},
+    {"name": "Messages"},
+    {"name": "Artifacts"},
+    {"name": "Health"},
 ]
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.3.0",
+    version="0.4.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -69,7 +52,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.3.0",
+        version="0.4.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
@@ -138,6 +121,7 @@ def swagger_ui() -> HTMLResponse:
 hub.include_router(health.router)
 hub.include_router(projects.router)
 hub.include_router(chats.router)
+hub.include_router(messages.router)
 hub.include_router(artifacts.router)
 
 # Estáticos do Swagger servidos localmente. Montar ANTES do hub:

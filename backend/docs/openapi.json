@@ -3,7 +3,7 @@
     "info": {
         "title": "Devian Hub API",
         "description": "\nAPI do hub do **Devian** \u2014 projetos, chats (Claude Code) e artefatos de build.\n\n**Autentica\u00e7\u00e3o:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExce\u00e7\u00e3o: `GET /health`, que \u00e9 p\u00fablico.\n",
-        "version": "0.3.0"
+        "version": "0.4.0"
     },
     "servers": [
         {
@@ -19,7 +19,7 @@
         "/health": {
             "get": {
                 "tags": [
-                    "health"
+                    "Health"
                 ],
                 "summary": "Health check",
                 "description": "Usado por monitoramento e pelo app para checar conectividade com o hub.",
@@ -39,7 +39,7 @@
         "/projects": {
             "get": {
                 "tags": [
-                    "projects"
+                    "Projects"
                 ],
                 "summary": "List projects",
                 "operationId": "list_projects_projects_get",
@@ -70,7 +70,7 @@
             },
             "post": {
                 "tags": [
-                    "projects"
+                    "Projects"
                 ],
                 "summary": "Create project",
                 "operationId": "create_project_projects_post",
@@ -115,7 +115,7 @@
         "/projects/{project_id}": {
             "get": {
                 "tags": [
-                    "projects"
+                    "Projects"
                 ],
                 "summary": "Get project",
                 "operationId": "get_project_projects__project_id__get",
@@ -130,7 +130,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
                         }
                     }
@@ -166,7 +167,7 @@
             },
             "put": {
                 "tags": [
-                    "projects"
+                    "Projects"
                 ],
                 "summary": "Update project",
                 "operationId": "update_project_projects__project_id__put",
@@ -181,7 +182,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
                         }
                     }
@@ -223,7 +225,7 @@
             },
             "delete": {
                 "tags": [
-                    "projects"
+                    "Projects"
                 ],
                 "summary": "Delete project",
                 "operationId": "delete_project_projects__project_id__delete",
@@ -238,7 +240,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
                         }
                     }
@@ -266,13 +269,13 @@
                 }
             }
         },
-        "/chats": {
+        "/projects/{project_id}/chats": {
             "get": {
                 "tags": [
-                    "chats"
+                    "Chats"
                 ],
                 "summary": "List chats",
-                "operationId": "list_chats_chats_get",
+                "operationId": "list_chats_projects__project_id__chats_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -281,29 +284,18 @@
                 "parameters": [
                     {
                         "name": "project_id",
-                        "in": "query",
-                        "required": false,
+                        "in": "path",
+                        "required": true,
                         "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Se informado, filtra chats do projeto",
-                            "examples": [
-                                1
-                            ],
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
-                        },
-                        "description": "Se informado, filtra chats do projeto"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Chats do projeto (ou todos), mais recentes primeiro",
+                        "description": "Chats do projeto, mais recentes primeiro",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -311,13 +303,16 @@
                                     "items": {
                                         "$ref": "#/components/schemas/ChatOut"
                                     },
-                                    "title": "Response List Chats Chats Get"
+                                    "title": "Response List Chats Projects  Project Id  Chats Get"
                                 }
                             }
                         }
                     },
                     "401": {
                         "description": "Token Bearer ausente ou inv\u00e1lido"
+                    },
+                    "404": {
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -333,13 +328,25 @@
             },
             "post": {
                 "tags": [
-                    "chats"
+                    "Chats"
                 ],
                 "summary": "Create chat",
-                "operationId": "create_chat_chats_post",
+                "operationId": "create_chat_projects__project_id__chats_post",
                 "security": [
                     {
                         "HTTPBearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -354,7 +361,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Chat criado (name vira slug da 1\u00aa mensagem se omitido)",
+                        "description": "Chat criado. Herda a `branch` do projeto; `name` vira slug da 1\u00aa mensagem se omitido.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -367,7 +374,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
@@ -375,13 +382,13 @@
                 }
             }
         },
-        "/chats/{chat_id}": {
+        "/projects/{project_id}/chats/{chat_id}": {
             "get": {
                 "tags": [
-                    "chats"
+                    "Chats"
                 ],
                 "summary": "Get chat",
-                "operationId": "get_chat_chats__chat_id__get",
+                "operationId": "get_chat_projects__project_id__chats__chat_id__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -389,11 +396,22 @@
                 ],
                 "parameters": [
                     {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
                         "name": "chat_id",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Chat Id"
                         }
                     }
@@ -413,7 +431,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -429,10 +447,10 @@
             },
             "delete": {
                 "tags": [
-                    "chats"
+                    "Chats"
                 ],
                 "summary": "Delete chat",
-                "operationId": "delete_chat_chats__chat_id__delete",
+                "operationId": "delete_chat_projects__project_id__chats__chat_id__delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -440,11 +458,22 @@
                 ],
                 "parameters": [
                     {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
                         "name": "chat_id",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Chat Id"
                         }
                     }
@@ -457,7 +486,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -472,13 +501,13 @@
                 }
             }
         },
-        "/chats/{chat_id}/rename": {
+        "/projects/{project_id}/chats/{chat_id}/rename": {
             "put": {
                 "tags": [
-                    "chats"
+                    "Chats"
                 ],
                 "summary": "Rename chat",
-                "operationId": "rename_chat_chats__chat_id__rename_put",
+                "operationId": "rename_chat_projects__project_id__chats__chat_id__rename_put",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -486,11 +515,22 @@
                 ],
                 "parameters": [
                     {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
                         "name": "chat_id",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Chat Id"
                         }
                     }
@@ -520,7 +560,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
@@ -528,13 +568,13 @@
                 }
             }
         },
-        "/chats/{chat_id}/messages": {
+        "/projects/{project_id}/chats/{chat_id}/messages": {
             "get": {
                 "tags": [
-                    "chats"
+                    "Messages"
                 ],
                 "summary": "Chat history (paginated)",
-                "operationId": "list_messages_chats__chat_id__messages_get",
+                "operationId": "list_messages_projects__project_id__chats__chat_id__messages_get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -542,11 +582,22 @@
                 ],
                 "parameters": [
                     {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
                         "name": "chat_id",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Chat Id"
                         }
                     },
@@ -557,19 +608,20 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "integer"
+                                    "type": "string",
+                                    "format": "uuid"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Id da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores.",
+                            "description": "UUID da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores.",
                             "examples": [
-                                42
+                                "0191f3b2-4c3a-7b00-8000-000000000013"
                             ],
                             "title": "Cursor"
                         },
-                        "description": "Id da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores."
+                        "description": "UUID da mensagem mais antiga da p\u00e1gina atual. Passe o `next_cursor` retornado para buscar as anteriores."
                     },
                     {
                         "name": "limit",
@@ -591,7 +643,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "P\u00e1gina de mensagens em ordem cronol\u00f3gica. Sem `cursor` \u2192 as **mais recentes**; com `cursor` \u2192 as anteriores \u00e0quele id (scroll p/ cima). `next_cursor: null` = in\u00edcio da conversa.",
+                        "description": "P\u00e1gina de mensagens em ordem cronol\u00f3gica. Sem `cursor` \u2192 as **mais recentes**; com `cursor` (UUID da msg mais antiga da p\u00e1gina) \u2192 as anteriores (scroll p/ cima). `next_cursor: null` = in\u00edcio da conversa.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -604,7 +656,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -620,10 +672,10 @@
             },
             "post": {
                 "tags": [
-                    "chats"
+                    "Messages"
                 ],
                 "summary": "Send message",
-                "operationId": "send_message_chats__chat_id__messages_post",
+                "operationId": "send_message_projects__project_id__chats__chat_id__messages_post",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -631,11 +683,22 @@
                 ],
                 "parameters": [
                     {
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Project Id"
+                        }
+                    },
+                    {
                         "name": "chat_id",
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Chat Id"
                         }
                     }
@@ -665,7 +728,7 @@
                         "description": "Token Bearer ausente ou inv\u00e1lido"
                     },
                     "404": {
-                        "description": "Chat ou projeto n\u00e3o encontrado"
+                        "description": "Projeto ou chat n\u00e3o encontrado"
                     },
                     "422": {
                         "description": "Corpo da requisi\u00e7\u00e3o inv\u00e1lido"
@@ -682,7 +745,7 @@
         "/projects/{project_id}/artifacts": {
             "get": {
                 "tags": [
-                    "artifacts"
+                    "Artifacts"
                 ],
                 "summary": "List project artifacts",
                 "operationId": "list_artifacts_projects__project_id__artifacts_get",
@@ -697,7 +760,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
                         }
                     }
@@ -739,7 +803,7 @@
         "/projects/{project_id}/artifacts/{artifact_id}": {
             "get": {
                 "tags": [
-                    "artifacts"
+                    "Artifacts"
                 ],
                 "summary": "Download artifact",
                 "operationId": "download_artifact_projects__project_id__artifacts__artifact_id__get",
@@ -754,7 +818,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Project Id"
                         }
                     },
@@ -763,7 +828,8 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "integer",
+                            "type": "string",
+                            "format": "uuid",
                             "title": "Artifact Id"
                         }
                     }
@@ -802,7 +868,8 @@
             "ArtifactOut": {
                 "properties": {
                     "id": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Id"
                     },
                     "filename": {
@@ -843,23 +910,15 @@
                 "examples": [
                     {
                         "content_type": "application/vnd.android.package-archive",
-                        "created_at": "2026-08-04T21:44:36.951372Z",
+                        "created_at": "2026-08-05T19:10:00.000000Z",
                         "filename": "serr-homolog-0.1.0(1).apk",
-                        "id": 1,
+                        "id": "0191f3b2-4c3a-7b00-8000-00000000001e",
                         "size_bytes": 29413656
                     }
                 ]
             },
             "ChatCreate": {
                 "properties": {
-                    "project_id": {
-                        "type": "integer",
-                        "title": "Project Id",
-                        "description": "ID of the project the chat belongs to.",
-                        "examples": [
-                            1
-                        ]
-                    },
                     "name": {
                         "anyOf": [
                             {
@@ -878,26 +937,24 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "project_id"
-                ],
                 "title": "ChatCreate",
-                "description": "Opens a new chat inside a project.",
+                "description": "Opens a new chat inside a project (project comes from the URL).",
                 "examples": [
                     {
-                        "name": "nova-feature",
-                        "project_id": 1
+                        "name": "nova-feature"
                     }
                 ]
             },
             "ChatOut": {
                 "properties": {
                     "id": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Id"
                     },
                     "project_id": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Project Id"
                     },
                     "name": {
@@ -936,13 +993,13 @@
                 "title": "ChatOut",
                 "examples": [
                     {
-                        "branch": "main",
-                        "created_at": "2026-08-04T21:44:08.958822Z",
-                        "id": 1,
+                        "branch": "develop",
+                        "created_at": "2026-08-05T19:00:00.000000Z",
+                        "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
                         "name": "qual-a-cor",
-                        "project_id": 1,
+                        "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "status": "active",
-                        "updated_at": "2026-08-04T21:44:12.366232Z"
+                        "updated_at": "2026-08-05T19:00:05.000000Z"
                     }
                 ]
             },
@@ -1004,7 +1061,8 @@
             "MessageOut": {
                 "properties": {
                     "id": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Id"
                     },
                     "role": {
@@ -1033,8 +1091,8 @@
                 "examples": [
                     {
                         "content": "Claro! Adicionei um bot\u00e3o de exportar PDF no rodap\u00e9 do relat\u00f3rio.",
-                        "created_at": "2026-08-04T21:44:12.366232Z",
-                        "id": 4,
+                        "created_at": "2026-08-05T19:00:05.000000Z",
+                        "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                         "role": "assistant"
                     }
                 ]
@@ -1051,7 +1109,8 @@
                     "next_cursor": {
                         "anyOf": [
                             {
-                                "type": "integer"
+                                "type": "string",
+                                "format": "uuid"
                             },
                             {
                                 "type": "null"
@@ -1066,24 +1125,24 @@
                     "next_cursor"
                 ],
                 "title": "MessagePage",
-                "description": "History page. `next_cursor` = id of the oldest message in this page;\npass it as `cursor` on the next call to fetch older ones (scroll up).\n`null` = beginning of the conversation reached.",
+                "description": "History page. `next_cursor` = id (UUID) of the oldest message in this\npage; pass it as `cursor` on the next call to fetch older ones\n(scroll up). `null` = beginning of the conversation reached.",
                 "examples": [
                     {
                         "messages": [
                             {
                                 "content": "Claro! Feito.",
-                                "created_at": "2026-08-04T21:44:12.366232Z",
-                                "id": 4,
+                                "created_at": "2026-08-05T19:00:05.000000Z",
+                                "id": "0191f3b2-4c3a-7b00-8000-000000000014",
                                 "role": "assistant"
                             },
                             {
                                 "content": "Pode adicionar um bot\u00e3o de exportar PDF?",
-                                "created_at": "2026-08-04T21:44:12.361597Z",
-                                "id": 3,
+                                "created_at": "2026-08-05T19:00:04.000000Z",
+                                "id": "0191f3b2-4c3a-7b00-8000-000000000013",
                                 "role": "user"
                             }
                         ],
-                        "next_cursor": 3
+                        "next_cursor": "0191f3b2-4c3a-7b00-8000-000000000013"
                     }
                 ]
             },
@@ -1114,28 +1173,13 @@
                             "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
                         ]
                     },
-                    "default_branch": {
+                    "branch": {
                         "type": "string",
-                        "title": "Default Branch",
-                        "description": "Branch used by default in builds.",
+                        "title": "Branch",
+                        "description": "Branch the project works on (used by builds and new chats).",
                         "default": "main",
                         "examples": [
-                            "main"
-                        ]
-                    },
-                    "container_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Container Path",
-                        "description": "Directory inside the `devian` container where Claude Code runs. Makes Claude load the project layer (CLAUDE.md / .claude).",
-                        "examples": [
-                            "/workspace/sisvisa-serr-mobile"
+                            "develop"
                         ]
                     }
                 },
@@ -1147,8 +1191,7 @@
                 "description": "Creates a project from an EXISTING repository.",
                 "examples": [
                     {
-                        "container_path": "/workspace/sisvisa-serr-mobile",
-                        "default_branch": "main",
+                        "branch": "develop",
                         "name": "sisvisa",
                         "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
                     }
@@ -1157,7 +1200,8 @@
             "ProjectOut": {
                 "properties": {
                     "id": {
-                        "type": "integer",
+                        "type": "string",
+                        "format": "uuid",
                         "title": "Id"
                     },
                     "name": {
@@ -1175,25 +1219,19 @@
                         ],
                         "title": "Repo Url"
                     },
-                    "default_branch": {
+                    "branch": {
                         "type": "string",
-                        "title": "Default Branch"
-                    },
-                    "container_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Container Path"
+                        "title": "Branch"
                     },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
                         "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
                     }
                 },
                 "type": "object",
@@ -1201,19 +1239,19 @@
                     "id",
                     "name",
                     "repo_url",
-                    "default_branch",
-                    "container_path",
-                    "created_at"
+                    "branch",
+                    "created_at",
+                    "updated_at"
                 ],
                 "title": "ProjectOut",
                 "examples": [
                     {
-                        "container_path": "/workspace/sisvisa-serr-mobile",
-                        "created_at": "2026-08-04T21:44:03.305361Z",
-                        "default_branch": "main",
-                        "id": 1,
+                        "branch": "develop",
+                        "created_at": "2026-08-05T19:00:00.000000Z",
+                        "id": "0191f3b2-4c3a-7b00-8000-000000000001",
                         "name": "sisvisa",
-                        "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
+                        "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
+                        "updated_at": "2026-08-05T19:00:00.000000Z"
                     }
                 ]
             },
@@ -1243,7 +1281,7 @@
                         ],
                         "title": "Repo Url"
                     },
-                    "default_branch": {
+                    "branch": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -1252,18 +1290,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Default Branch"
-                    },
-                    "container_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Container Path"
+                        "title": "Branch"
                     }
                 },
                 "type": "object",
@@ -1271,7 +1298,7 @@
                 "description": "Partial update \u2014 send only the fields you want to change.",
                 "examples": [
                     {
-                        "default_branch": "develop"
+                        "branch": "develop"
                     }
                 ]
             },
@@ -1326,20 +1353,19 @@
     },
     "tags": [
         {
-            "name": "health",
-            "description": "**P\u00fablico** \u2014 sem autentica\u00e7\u00e3o. Usado por monitoramento e pelo app para checar conectividade."
+            "name": "Projects"
         },
         {
-            "name": "projects",
-            "description": "Projetos = reposit\u00f3rios de c\u00f3digo. CRUD completo. `container_path` define onde o Claude roda no container (camada por projeto). Projetos s\u00e3o criados apenas a partir de repo existente."
+            "name": "Chats"
         },
         {
-            "name": "chats",
-            "description": "Conversas do drawer. **1 chat = 1 sess\u00e3o Claude Code** (mem\u00f3ria cont\u00ednua entre mensagens). O `name` nasce `new-chat` e vira slug da primeira mensagem. Renomea\u00e7\u00e3o via `PUT /chats/{id}/rename`."
+            "name": "Messages"
         },
         {
-            "name": "artifacts",
-            "description": "Arquivos gerados pelo CI (APKs, relat\u00f3rios). Storage local no servidor; download direto pelo app."
+            "name": "Artifacts"
+        },
+        {
+            "name": "Health"
         }
     ]
 }

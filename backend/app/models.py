@@ -1,7 +1,10 @@
 from datetime import datetime
+from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from app.uuid7 import uuid7
 
 
 class Base(DeclarativeBase):
@@ -11,13 +14,17 @@ class Base(DeclarativeBase):
 class Project(Base):
     __tablename__ = "projects"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     repo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    default_branch: Mapped[str] = mapped_column(String(100), default="main")
+    branch: Mapped[str] = mapped_column(String(100), default="main")
+    # Interno (não exposto na API): onde o Claude roda no container.
     container_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
     chats: Mapped[list["Chat"]] = relationship(
@@ -31,8 +38,8 @@ class Project(Base):
 class Chat(Base):
     __tablename__ = "chats"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[int] = mapped_column(
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    project_id: Mapped[UUID] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(String(100), default="new-chat")
@@ -55,8 +62,8 @@ class Chat(Base):
 class Message(Base):
     __tablename__ = "messages"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    chat_id: Mapped[int] = mapped_column(
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    chat_id: Mapped[UUID] = mapped_column(
         ForeignKey("chats.id", ondelete="CASCADE"), index=True
     )
     role: Mapped[str] = mapped_column(String(20))
@@ -71,8 +78,8 @@ class Message(Base):
 class Artifact(Base):
     __tablename__ = "artifacts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[int] = mapped_column(
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    project_id: Mapped[UUID] = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
     filename: Mapped[str] = mapped_column(String(255))
