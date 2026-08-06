@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import require_token
+from app.auth import AuthContext, require_auth
 from app.db import get_db
 from app.services.claude import ClaudeError, ClaudeTimeout, resolve_workdir, run_claude
 from app.slug import slugify
@@ -21,10 +21,17 @@ CLAUDE_TIMEOUT = {504: {"description": "O Claude Code não respondeu a tempo (ti
 
 
 def _get_chat_in_project_or_404(
-    db: Session, project_id: UUID, chat_id: UUID
+    db: Session, project_id: UUID, chat_id: UUID, user_id: UUID | None = None
 ) -> models.Chat:
-    chat = db.get(models.Chat, chat_id)
-    if not chat or chat.project_id != project_id:
+    q = (
+        db.query(models.Chat)
+        .join(models.Project)
+        .filter(models.Chat.id == chat_id, models.Chat.project_id == project_id)
+    )
+    if user_id is not None:
+        q = q.filter(models.Project.user_id == user_id)
+    chat = q.first()
+    if not chat:
         raise HTTPException(status_code=404, detail="Chat não encontrado")
     return chat
 
@@ -59,9 +66,9 @@ def list_messages(
         examples=[50],
     ),
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    _get_chat_in_project_or_404(db, project_id, chat_id)
+    _get_chat_in_project_or_404(db, project_id, chat_id, auth.user_id)
     q = db.query(models.Message).filter_by(chat_id=chat_id)
     if cursor is not None:
         q = q.filter(models.Message.id < cursor)
@@ -91,9 +98,9 @@ def send_message(
     chat_id: UUID,
     req: schemas.MessageCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    chat = _get_chat_in_project_or_404(db, project_id, chat_id)
+    chat = _get_chat_in_project_or_404(db, project_id, chat_id, auth.user_id)
     is_first = not db.query(models.Message).filter_by(chat_id=chat.id).first()
 
     db.add(models.Message(chat_id=chat.id, role="user", content=req.content))

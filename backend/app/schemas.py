@@ -99,6 +99,10 @@ class ProjectOut(BaseModel):
     )
 
     id: UUID
+    user_id: UUID | None = Field(
+        default=None,
+        description="Owner user id. Null for projects created by machine token before the first login (adopted by the admin on login).",
+    )
     name: str
     repo_url: str | None
     branch: str
@@ -278,3 +282,108 @@ class ArtifactOut(BaseModel):
     size_bytes: int = Field(description="Size in bytes")
     content_type: str | None
     created_at: BrDateTime
+
+
+# ============================================================
+# Auth (POST /auth/login — Google ID token → sessão)
+# ============================================================
+
+
+class LoginRequest(BaseModel):
+    """Exchanges a Google ID token for a Devian session token."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."}
+            ]
+        }
+    )
+
+    id_token: str = Field(
+        description=(
+            "Google ID token (JWT) returned by google_sign_in "
+            "(with serverClientId set). The backend validates its signature "
+            "against Google's public keys — no Firebase involved."
+        ),
+        examples=["eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."],
+    )
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
+                    "email": "samuel@agapech.com.br",
+                    "name": "Samuel",
+                    "picture_url": "https://lh3.googleusercontent.com/a/...",
+                    "role": "admin",
+                    "status": "active",
+                    "created_at": "2026-08-05T16:00:00Z",
+                    "updated_at": "2026-08-05T16:00:00Z",
+                }
+            ]
+        },
+    )
+
+    id: UUID
+    email: str
+    name: str
+    picture_url: str | None
+    role: str = Field(description="'admin' or 'member'")
+    status: str = Field(description="'active', 'blocked' or 'deleted'")
+    created_at: BrDateTime
+    updated_at: BrDateTime
+
+
+class LoginResponse(BaseModel):
+    """Session token + user profile."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "user": {
+                        "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
+                        "email": "samuel@agapech.com.br",
+                        "name": "Samuel",
+                        "picture_url": "https://lh3.googleusercontent.com/a/...",
+                        "role": "admin",
+                        "status": "active",
+                        "created_at": "2026-08-05T16:00:00Z",
+                        "updated_at": "2026-08-05T16:00:00Z",
+                    },
+                }
+            ]
+        }
+    )
+
+    token: str = Field(
+        description="Devian session JWT — send as `Authorization: Bearer <token>`."
+    )
+    user: UserOut
+
+
+# ============================================================
+# Users (perfil do usuário autenticado)
+# ============================================================
+
+
+class UserUpdate(BaseModel):
+    """Partial update of the current user's profile."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"name": "Samuel G.", "picture_url": "https://lh3.googleusercontent.com/a/new"}
+            ]
+        }
+    )
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    email: str | None = Field(default=None, min_length=3, max_length=255)
+    picture_url: str | None = Field(default=None, max_length=1000)

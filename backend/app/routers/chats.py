@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import require_token
+from app.auth import AuthContext, require_auth
 from app.db import get_db
 from app.slug import slugify
 
@@ -16,18 +16,30 @@ NOT_FOUND = {404: {"description": "Projeto ou chat não encontrado", "model": sc
 VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": schemas.ErrorOut}}
 
 
-def _get_project_or_404(db: Session, project_id: UUID) -> models.Project:
-    project = db.get(models.Project, project_id)
+def _get_project_or_404(
+    db: Session, project_id: UUID, user_id: UUID | None = None
+) -> models.Project:
+    q = db.query(models.Project).filter(models.Project.id == project_id)
+    if user_id is not None:
+        q = q.filter(models.Project.user_id == user_id)
+    project = q.first()
     if not project:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return project
 
 
 def _get_chat_in_project_or_404(
-    db: Session, project_id: UUID, chat_id: UUID
+    db: Session, project_id: UUID, chat_id: UUID, user_id: UUID | None = None
 ) -> models.Chat:
-    chat = db.get(models.Chat, chat_id)
-    if not chat or chat.project_id != project_id:
+    q = (
+        db.query(models.Chat)
+        .join(models.Project)
+        .filter(models.Chat.id == chat_id, models.Chat.project_id == project_id)
+    )
+    if user_id is not None:
+        q = q.filter(models.Project.user_id == user_id)
+    chat = q.first()
+    if not chat:
         raise HTTPException(status_code=404, detail="Chat não encontrado")
     return chat
 
@@ -42,9 +54,9 @@ def _get_chat_in_project_or_404(
 def list_chats(
     project_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    _get_project_or_404(db, project_id)
+    _get_project_or_404(db, project_id, auth.user_id)
     return (
         db.query(models.Chat)
         .filter_by(project_id=project_id)
@@ -68,9 +80,9 @@ def create_chat(
     project_id: UUID,
     req: schemas.ChatCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    project = _get_project_or_404(db, project_id)
+    project = _get_project_or_404(db, project_id, auth.user_id)
     chat = models.Chat(
         project_id=project_id,
         name=req.name or "new-chat",
@@ -93,9 +105,9 @@ def get_chat(
     project_id: UUID,
     chat_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    return _get_chat_in_project_or_404(db, project_id, chat_id)
+    return _get_chat_in_project_or_404(db, project_id, chat_id, auth.user_id)
 
 
 @router.delete(
@@ -109,9 +121,9 @@ def delete_chat(
     project_id: UUID,
     chat_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    chat = _get_chat_in_project_or_404(db, project_id, chat_id)
+    chat = _get_chat_in_project_or_404(db, project_id, chat_id, auth.user_id)
     db.delete(chat)
     db.commit()
 
@@ -128,9 +140,9 @@ def rename_chat(
     chat_id: UUID,
     req: schemas.ChatRename,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    chat = _get_chat_in_project_or_404(db, project_id, chat_id)
+    chat = _get_chat_in_project_or_404(db, project_id, chat_id, auth.user_id)
     chat.name = req.name
     db.commit()
     db.refresh(chat)

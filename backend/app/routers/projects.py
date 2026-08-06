@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import require_token
+from app.auth import AuthContext, require_auth
 from app.db import get_db
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -29,8 +29,13 @@ def _derive_container_path(name: str, repo_url: str | None) -> str | None:
     return f"/workspace/{name}"
 
 
-def _get_project_or_404(db: Session, project_id: UUID) -> models.Project:
-    project = db.get(models.Project, project_id)
+def _get_project_or_404(
+    db: Session, project_id: UUID, user_id: UUID | None = None
+) -> models.Project:
+    q = db.query(models.Project).filter(models.Project.id == project_id)
+    if user_id is not None:
+        q = q.filter(models.Project.user_id == user_id)
+    project = q.first()
     if not project:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return project
@@ -45,9 +50,12 @@ def _get_project_or_404(db: Session, project_id: UUID) -> models.Project:
 )
 def list_projects(
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    return db.query(models.Project).order_by(models.Project.name).all()
+    q = db.query(models.Project)
+    if auth.user_id is not None:
+        q = q.filter(models.Project.user_id == auth.user_id)
+    return q.order_by(models.Project.name).all()
 
 
 @router.post(
@@ -61,13 +69,14 @@ def list_projects(
 def create_project(
     req: schemas.ProjectCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
     existing = db.query(models.Project).filter_by(name=req.name).first()
     if existing:
         raise HTTPException(status_code=409, detail="Projeto já existe")
     project = models.Project(
         name=req.name,
+        user_id=auth.user_id,
         repo_url=req.repo_url,
         branch=req.branch,
         container_path=_derive_container_path(req.name, req.repo_url),
@@ -88,9 +97,9 @@ def create_project(
 def get_project(
     project_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    return _get_project_or_404(db, project_id)
+    return _get_project_or_404(db, project_id, auth.user_id)
 
 
 @router.put(
@@ -104,9 +113,9 @@ def update_project(
     project_id: UUID,
     req: schemas.ProjectUpdate,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    project = _get_project_or_404(db, project_id)
+    project = _get_project_or_404(db, project_id, auth.user_id)
     data = req.model_dump(exclude_unset=True)
     if "name" in data and data["name"] != project.name:
         existing = (
@@ -136,8 +145,8 @@ def update_project(
 def delete_project(
     project_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    project = _get_project_or_404(db, project_id)
+    project = _get_project_or_404(db, project_id, auth.user_id)
     db.delete(project)
     db.commit()

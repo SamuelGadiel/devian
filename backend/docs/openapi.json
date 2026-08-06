@@ -1,1 +1,1915 @@
-{"openapi":"3.0.3","info":{"title":"Devian Hub API","description":"\nAPI do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.\n\n**Autenticação:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\nExceção: `GET /health`, que é público.\n","version":"0.5.5"},"servers":[{"url":"https://api.agapech.com.br/devian","description":"Produção — via túnel Cloudflare (oracle-hermi)"},{"url":"/devian","description":"Local — backend direto na porta 8088"}],"paths":{"/health":{"get":{"tags":["Health"],"summary":"Health check","description":"Usado por monitoramento e pelo app para checar conectividade com o hub.","operationId":"health_health_get","responses":{"200":{"description":"Serviço vivo. Sem autenticação (público).","content":{"application/json":{"schema":{}}}}}}},"/projects":{"get":{"tags":["Projects"],"summary":"List projects","operationId":"list_projects_projects_get","responses":{"200":{"description":"Lista de projetos (ordem alfabética)","content":{"application/json":{"schema":{"items":{"$ref":"#/components/schemas/ProjectOut"},"type":"array","title":"Response List Projects Projects Get"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}},"security":[{"HTTPBearer":[]}]},"post":{"tags":["Projects"],"summary":"Create project","operationId":"create_project_projects_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectCreate"}}},"required":true},"responses":{"201":{"description":"Projeto criado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"409":{"description":"Já existe um projeto com esse nome","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Corpo da requisição inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}},"security":[{"HTTPBearer":[]}]}},"/projects/{project_id}":{"get":{"tags":["Projects"],"summary":"Get project","operationId":"get_project_projects__project_id__get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"responses":{"200":{"description":"Detalhes do projeto","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"put":{"tags":["Projects"],"summary":"Update project","operationId":"update_project_projects__project_id__put","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectUpdate"}}}},"responses":{"200":{"description":"Projeto atualizado (PATCH-like: só os campos enviados)","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ProjectOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"409":{"description":"Já existe um projeto com esse nome","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Corpo da requisição inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}}},"delete":{"tags":["Projects"],"summary":"Delete project","operationId":"delete_project_projects__project_id__delete","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"responses":{"204":{"description":"Projeto deletado (cascata: chats, mensagens e artefatos)"},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/projects/{project_id}/chats":{"get":{"tags":["Chats"],"summary":"List chats","operationId":"list_chats_projects__project_id__chats_get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"responses":{"200":{"description":"Chats do projeto, mais recentes primeiro","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/ChatOut"},"title":"Response List Chats Projects  Project Id  Chats Get"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["Chats"],"summary":"Create chat","operationId":"create_chat_projects__project_id__chats_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatCreate"}}}},"responses":{"201":{"description":"Chat criado. Herda a `branch` do projeto; `name` vira slug da 1ª mensagem se omitido.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Corpo da requisição inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}}}},"/projects/{project_id}/chats/{chat_id}":{"get":{"tags":["Chats"],"summary":"Get chat","operationId":"get_chat_projects__project_id__chats__chat_id__get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"chat_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Chat Id"}}],"responses":{"200":{"description":"Detalhes do chat","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"delete":{"tags":["Chats"],"summary":"Delete chat","operationId":"delete_chat_projects__project_id__chats__chat_id__delete","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"chat_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Chat Id"}}],"responses":{"204":{"description":"Chat e histórico deletados (mensagens em cascata)"},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/projects/{project_id}/chats/{chat_id}/rename":{"put":{"tags":["Chats"],"summary":"Rename chat","operationId":"rename_chat_projects__project_id__chats__chat_id__rename_put","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"chat_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Chat Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatRename"}}}},"responses":{"200":{"description":"Chat renomeado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ChatOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Corpo da requisição inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}}}},"/projects/{project_id}/chats/{chat_id}/messages":{"get":{"tags":["Messages"],"summary":"Chat history (paginated)","operationId":"list_messages_projects__project_id__chats__chat_id__messages_get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"chat_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Chat Id"}},{"name":"cursor","in":"query","required":false,"schema":{"description":"UUID da mensagem mais antiga da página atual. Passe o `next_cursor` retornado para buscar as anteriores.","title":"Cursor","example":"0191f3b2-4c3a-7b00-8000-000000000013","type":"string","format":"uuid","nullable":true},"description":"UUID da mensagem mais antiga da página atual. Passe o `next_cursor` retornado para buscar as anteriores."},{"name":"limit","in":"query","required":false,"schema":{"type":"integer","maximum":200,"minimum":1,"description":"Quantidade de mensagens por página (1–200)","default":50,"title":"Limit","example":50},"description":"Quantidade de mensagens por página (1–200)"}],"responses":{"200":{"description":"Página de mensagens em ordem cronológica. Sem `cursor` → as **mais recentes**; com `cursor` (UUID da msg mais antiga da página) → as anteriores (scroll p/ cima). `next_cursor: null` = início da conversa.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/MessagePage"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["Messages"],"summary":"Send message","operationId":"send_message_projects__project_id__chats__chat_id__messages_post","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"chat_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Chat Id"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/MessageCreate"}}}},"responses":{"201":{"description":"Mensagem do usuário gravada, processada pelo Claude Code na sessão do chat e resposta do assistente gravada e retornada. Payload leve: **só a última mensagem** — o contexto fica na sessão + no banco.","content":{"application/json":{"schema":{"$ref":"#/components/schemas/MessageOut"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto ou chat não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Corpo da requisição inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"502":{"description":"Erro do Claude Code no container (ClaudeError)","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"504":{"description":"O Claude Code não respondeu a tempo (timeout)","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}}}}},"/projects/{project_id}/artifacts":{"get":{"tags":["Artifacts"],"summary":"List project artifacts","operationId":"list_artifacts_projects__project_id__artifacts_get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}}],"responses":{"200":{"description":"Artefatos (APKs, relatórios…) mais recentes primeiro","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/ArtifactOut"},"title":"Response List Artifacts Projects  Project Id  Artifacts Get"}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto, artefato ou arquivo não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/projects/{project_id}/artifacts/{artifact_id}":{"get":{"tags":["Artifacts"],"summary":"Download artifact","operationId":"download_artifact_projects__project_id__artifacts__artifact_id__get","security":[{"HTTPBearer":[]}],"parameters":[{"name":"project_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Project Id"}},{"name":"artifact_id","in":"path","required":true,"schema":{"type":"string","format":"uuid","title":"Artifact Id"}}],"responses":{"200":{"description":"Stream do arquivo (APK) para instalação no celular. Header `Content-Disposition: attachment` com o nome do arquivo.","content":{"application/json":{"schema":{}}}},"401":{"description":"Token Bearer ausente ou inválido","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"404":{"description":"Projeto, artefato ou arquivo não encontrado","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ErrorOut"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}}},"components":{"schemas":{"ArtifactOut":{"properties":{"id":{"type":"string","format":"uuid","title":"Id"},"filename":{"type":"string","title":"Filename"},"size_bytes":{"type":"integer","title":"Size Bytes","description":"Size in bytes"},"content_type":{"title":"Content Type","type":"string","nullable":true},"created_at":{"type":"string","title":"Created At"}},"type":"object","required":["id","filename","size_bytes","content_type","created_at"],"title":"ArtifactOut","example":{"content_type":"application/vnd.android.package-archive","created_at":"2026-08-05T16:10:00Z","filename":"serr-homolog-0.1.0(1).apk","id":"0191f3b2-4c3a-7b00-8000-00000000001e","size_bytes":29413656}},"ChatCreate":{"properties":{"name":{"title":"Name","description":"Chat name/slug. If omitted, it starts as 'new-chat' and becomes the slug of the first message (e.g. 'qual-a-cor').","example":"nova-feature","type":"string","maxLength":100,"nullable":true}},"type":"object","title":"ChatCreate","description":"Opens a new chat inside a project (project comes from the URL).","example":{"name":"nova-feature"}},"ChatOut":{"properties":{"id":{"type":"string","format":"uuid","title":"Id"},"project_id":{"type":"string","format":"uuid","title":"Project Id"},"name":{"type":"string","title":"Name"},"created_at":{"type":"string","title":"Created At"},"updated_at":{"type":"string","title":"Updated At"}},"type":"object","required":["id","project_id","name","created_at","updated_at"],"title":"ChatOut","example":{"created_at":"2026-08-05T16:00:00Z","id":"0191f3b2-4c3a-7b00-8000-00000000000a","name":"qual-a-cor","project_id":"0191f3b2-4c3a-7b00-8000-000000000001","updated_at":"2026-08-05T16:00:05Z"}},"ChatRename":{"properties":{"name":{"type":"string","maxLength":100,"minLength":1,"title":"Name"}},"type":"object","required":["name"],"title":"ChatRename","description":"Renames the slug shown in the drawer.","example":{"name":"ajuste-no-relatorio"}},"ErrorOut":{"properties":{"message":{"type":"string","title":"Message","description":"Mensagem de erro (em português)"}},"type":"object","required":["message"],"title":"ErrorOut","description":"Resposta de erro padrão da API.","example":{"message":"Projeto não encontrado"}},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"MessageCreate":{"properties":{"content":{"type":"string","minLength":1,"title":"Content","description":"Message text sent to the assistant."}},"type":"object","required":["content"],"title":"MessageCreate","description":"The user's next message. That's it — no history in the payload.","example":{"content":"Pode adicionar um botão de exportar PDF no relatório?"}},"MessageOut":{"properties":{"id":{"type":"string","format":"uuid","title":"Id"},"role":{"type":"string","title":"Role","description":"'user' or 'assistant'"},"content":{"type":"string","title":"Content"},"created_at":{"type":"string","title":"Created At"}},"type":"object","required":["id","role","content","created_at"],"title":"MessageOut","example":{"content":"Claro! Adicionei um botão de exportar PDF no rodapé do relatório.","created_at":"2026-08-05T16:00:05Z","id":"0191f3b2-4c3a-7b00-8000-000000000014","role":"assistant"}},"MessagePage":{"properties":{"messages":{"items":{"$ref":"#/components/schemas/MessageOut"},"type":"array","title":"Messages"},"next_cursor":{"title":"Next Cursor","type":"string","format":"uuid","nullable":true}},"type":"object","required":["messages","next_cursor"],"title":"MessagePage","description":"History page. `next_cursor` = id (UUID) of the oldest message in this\npage; pass it as `cursor` on the next call to fetch older ones\n(scroll up). `null` = beginning of the conversation reached.","example":{"messages":[{"content":"Claro! Feito.","created_at":"2026-08-05T16:00:05Z","id":"0191f3b2-4c3a-7b00-8000-000000000014","role":"assistant"},{"content":"Pode adicionar um botão de exportar PDF?","created_at":"2026-08-05T16:00:04Z","id":"0191f3b2-4c3a-7b00-8000-000000000013","role":"user"}],"next_cursor":"0191f3b2-4c3a-7b00-8000-000000000013"}},"ProjectCreate":{"properties":{"name":{"type":"string","maxLength":100,"minLength":1,"title":"Name","description":"Short project name. Becomes the unique identifier.","example":"sisvisa"},"repo_url":{"title":"Repo Url","description":"URL of the existing repository (git@ or https://).","example":"git@bitbucket.org:branef/sisvisa-serr-mobile.git","type":"string","nullable":true},"branch":{"type":"string","title":"Branch","description":"Branch the project works on (used by builds and new chats).","default":"main","example":"develop"}},"type":"object","required":["name"],"title":"ProjectCreate","description":"Creates a project from an EXISTING repository.","example":{"branch":"develop","name":"sisvisa","repo_url":"git@bitbucket.org:branef/sisvisa-serr-mobile.git"}},"ProjectOut":{"properties":{"id":{"type":"string","format":"uuid","title":"Id"},"name":{"type":"string","title":"Name"},"repo_url":{"title":"Repo Url","type":"string","nullable":true},"branch":{"type":"string","title":"Branch"},"created_at":{"type":"string","title":"Created At"},"updated_at":{"type":"string","title":"Updated At"}},"type":"object","required":["id","name","repo_url","branch","created_at","updated_at"],"title":"ProjectOut","example":{"branch":"develop","created_at":"2026-08-05T16:00:00Z","id":"0191f3b2-4c3a-7b00-8000-000000000001","name":"sisvisa","repo_url":"git@bitbucket.org:branef/sisvisa-serr-mobile.git","updated_at":"2026-08-05T16:00:00Z"}},"ProjectUpdate":{"properties":{"name":{"title":"Name","type":"string","maxLength":100,"minLength":1,"nullable":true},"repo_url":{"title":"Repo Url","type":"string","nullable":true},"branch":{"title":"Branch","type":"string","nullable":true}},"type":"object","title":"ProjectUpdate","description":"Partial update — send only the fields you want to change.","example":{"branch":"develop"}},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}},"securitySchemes":{"HTTPBearer":{"type":"http","description":"Token Bearer do Devian (DEVIAN_API_TOKEN). Cole apenas o token, sem o prefixo 'Bearer '.","scheme":"bearer"}}},"tags":[{"name":"Projects"},{"name":"Chats"},{"name":"Messages"},{"name":"Artifacts"},{"name":"Health"}]}
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Devian Hub API",
+    "description": "\nAPI do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.\n\n**Autenticação:** os endpoints exigem um **Bearer token** com dois formatos:\n\n1. **Token de máquina** (`DEVIAN_API_TOKEN`) — automação/scripts; atua como o admin.\n2. **JWT de sessão** — retornado por `POST /auth/login` após login com a conta\n   Google (via `google_sign_in` no app; sem Firebase). O backend valida o ID\n   token contra as chaves públicas do Google e emite o token de sessão.\n\nOs dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário\nautenticado: cada usuário vê apenas os próprios dados, resolvidos\nautomaticamente a partir do token.\n\nEndpoints públicos: `GET /health` e `POST /auth/login`.\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\n",
+    "version": "0.6.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.agapech.com.br/devian",
+      "description": "Produção — via túnel Cloudflare (oracle-hermi)"
+    },
+    {
+      "url": "/devian",
+      "description": "Local — backend direto na porta 8088"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "description": "Usado por monitoramento e pelo app para checar conectividade com o hub.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Serviço vivo. Sem autenticação (público).",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login with Google",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Valida o ID token do Google, cria/atualiza o usuário e devolve o token de sessão + perfil. Público (não exige Bearer).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token do Google inválido ou expirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conta não autorizada, inativa ou deletada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Autenticação não configurada (GOOGLE_CLIENT_ID / SESSION_JWT_SECRET)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Get current user",
+        "operationId": "get_me_users_me_get",
+        "responses": {
+          "200": {
+            "description": "Perfil do usuário autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conta inativa ou deletada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Delete account",
+        "operationId": "delete_me_users_me_delete",
+        "responses": {
+          "204": {
+            "description": "Inativa a conta do usuário (soft delete: status = 'deleted'). Login futuro com a mesma conta Google retorna 403."
+          },
+          "401": {
+            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conta inativa ou deletada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Update current user",
+        "operationId": "update_me_users_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Atualiza nome, e-mail e/ou foto do usuário autenticado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conta inativa ou deletada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já usado por outra conta",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/projects": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List projects",
+        "operationId": "list_projects_projects_get",
+        "responses": {
+          "200": {
+            "description": "Lista de projetos (ordem alfabética)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Projects Projects Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Create project",
+        "operationId": "create_project_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Projeto criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Já existe um projeto com esse nome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get project",
+        "operationId": "get_project_projects__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalhes do projeto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Update project",
+        "operationId": "update_project_projects__project_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Projeto atualizado (PATCH-like: só os campos enviados)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Já existe um projeto com esse nome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Delete project",
+        "operationId": "delete_project_projects__project_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Projeto deletado (cascata: chats, mensagens e artefatos)"
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/chats": {
+      "get": {
+        "tags": [
+          "Chats"
+        ],
+        "summary": "List chats",
+        "operationId": "list_chats_projects__project_id__chats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chats do projeto, mais recentes primeiro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatOut"
+                  },
+                  "title": "Response List Chats Projects  Project Id  Chats Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Chats"
+        ],
+        "summary": "Create chat",
+        "operationId": "create_chat_projects__project_id__chats_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Chat criado. Herda a `branch` do projeto; `name` vira slug da 1ª mensagem se omitido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/chats/{chat_id}": {
+      "get": {
+        "tags": [
+          "Chats"
+        ],
+        "summary": "Get chat",
+        "operationId": "get_chat_projects__project_id__chats__chat_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalhes do chat",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Chats"
+        ],
+        "summary": "Delete chat",
+        "operationId": "delete_chat_projects__project_id__chats__chat_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Chat e histórico deletados (mensagens em cascata)"
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/chats/{chat_id}/rename": {
+      "put": {
+        "tags": [
+          "Chats"
+        ],
+        "summary": "Rename chat",
+        "operationId": "rename_chat_projects__project_id__chats__chat_id__rename_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRename"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat renomeado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/chats/{chat_id}/messages": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Chat history (paginated)",
+        "operationId": "list_messages_projects__project_id__chats__chat_id__messages_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chat Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "description": "UUID da mensagem mais antiga da página atual. Passe o `next_cursor` retornado para buscar as anteriores.",
+              "title": "Cursor",
+              "example": "0191f3b2-4c3a-7b00-8000-000000000013",
+              "type": "string",
+              "format": "uuid",
+              "nullable": true
+            },
+            "description": "UUID da mensagem mais antiga da página atual. Passe o `next_cursor` retornado para buscar as anteriores."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Quantidade de mensagens por página (1–200)",
+              "default": 50,
+              "title": "Limit",
+              "example": 50
+            },
+            "description": "Quantidade de mensagens por página (1–200)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de mensagens em ordem cronológica. Sem `cursor` → as **mais recentes**; com `cursor` (UUID da msg mais antiga da página) → as anteriores (scroll p/ cima). `next_cursor: null` = início da conversa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessagePage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send message",
+        "operationId": "send_message_projects__project_id__chats__chat_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Chat Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mensagem do usuário gravada, processada pelo Claude Code na sessão do chat e resposta do assistente gravada e retornada. Payload leve: **só a última mensagem** — o contexto fica na sessão + no banco.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto ou chat não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Erro do Claude Code no container (ClaudeError)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "O Claude Code não respondeu a tempo (timeout)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/artifacts": {
+      "get": {
+        "tags": [
+          "Artifacts"
+        ],
+        "summary": "List project artifacts",
+        "operationId": "list_artifacts_projects__project_id__artifacts_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artefatos (APKs, relatórios…) mais recentes primeiro",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArtifactOut"
+                  },
+                  "title": "Response List Artifacts Projects  Project Id  Artifacts Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto, artefato ou arquivo não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/artifacts/{artifact_id}": {
+      "get": {
+        "tags": [
+          "Artifacts"
+        ],
+        "summary": "Download artifact",
+        "operationId": "download_artifact_projects__project_id__artifacts__artifact_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream do arquivo (APK) para instalação no celular. Header `Content-Disposition: attachment` com o nome do arquivo.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Token Bearer ausente ou inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Projeto, artefato ou arquivo não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArtifactOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes",
+            "description": "Size in bytes"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "size_bytes",
+          "content_type",
+          "created_at"
+        ],
+        "title": "ArtifactOut",
+        "example": {
+          "content_type": "application/vnd.android.package-archive",
+          "created_at": "2026-08-05T16:10:00Z",
+          "filename": "serr-homolog-0.1.0(1).apk",
+          "id": "0191f3b2-4c3a-7b00-8000-00000000001e",
+          "size_bytes": 29413656
+        }
+      },
+      "ChatCreate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "description": "Chat name/slug. If omitted, it starts as 'new-chat' and becomes the slug of the first message (e.g. 'qual-a-cor').",
+            "example": "nova-feature",
+            "type": "string",
+            "maxLength": 100,
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "title": "ChatCreate",
+        "description": "Opens a new chat inside a project (project comes from the URL).",
+        "example": {
+          "name": "nova-feature"
+        }
+      },
+      "ChatOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Project Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ChatOut",
+        "example": {
+          "created_at": "2026-08-05T16:00:00Z",
+          "id": "0191f3b2-4c3a-7b00-8000-00000000000a",
+          "name": "qual-a-cor",
+          "project_id": "0191f3b2-4c3a-7b00-8000-000000000001",
+          "updated_at": "2026-08-05T16:00:05Z"
+        }
+      },
+      "ChatRename": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ChatRename",
+        "description": "Renames the slug shown in the drawer.",
+        "example": {
+          "name": "ajuste-no-relatorio"
+        }
+      },
+      "ErrorOut": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Mensagem de erro (em português)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "ErrorOut",
+        "description": "Resposta de erro padrão da API.",
+        "example": {
+          "message": "Projeto não encontrado"
+        }
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginRequest": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "title": "Id Token",
+            "description": "Google ID token (JWT) returned by google_sign_in (with serverClientId set). The backend validates its signature against Google's public keys — no Firebase involved.",
+            "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token"
+        ],
+        "title": "LoginRequest",
+        "description": "Exchanges a Google ID token for a Devian session token.",
+        "example": {
+          "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."
+        }
+      },
+      "LoginResponse": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "Devian session JWT — send as `Authorization: Bearer <token>`."
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "user"
+        ],
+        "title": "LoginResponse",
+        "description": "Session token + user profile.",
+        "example": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "user": {
+            "created_at": "2026-08-05T16:00:00Z",
+            "email": "samuel@agapech.com.br",
+            "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
+            "name": "Samuel",
+            "picture_url": "https://lh3.googleusercontent.com/a/...",
+            "role": "admin",
+            "status": "active",
+            "updated_at": "2026-08-05T16:00:00Z"
+          }
+        }
+      },
+      "MessageCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content",
+            "description": "Message text sent to the assistant."
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "MessageCreate",
+        "description": "The user's next message. That's it — no history in the payload.",
+        "example": {
+          "content": "Pode adicionar um botão de exportar PDF no relatório?"
+        }
+      },
+      "MessageOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "description": "'user' or 'assistant'"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at"
+        ],
+        "title": "MessageOut",
+        "example": {
+          "content": "Claro! Adicionei um botão de exportar PDF no rodapé do relatório.",
+          "created_at": "2026-08-05T16:00:05Z",
+          "id": "0191f3b2-4c3a-7b00-8000-000000000014",
+          "role": "assistant"
+        }
+      },
+      "MessagePage": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "next_cursor": {
+            "title": "Next Cursor",
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages",
+          "next_cursor"
+        ],
+        "title": "MessagePage",
+        "description": "History page. `next_cursor` = id (UUID) of the oldest message in this\npage; pass it as `cursor` on the next call to fetch older ones\n(scroll up). `null` = beginning of the conversation reached.",
+        "example": {
+          "messages": [
+            {
+              "content": "Claro! Feito.",
+              "created_at": "2026-08-05T16:00:05Z",
+              "id": "0191f3b2-4c3a-7b00-8000-000000000014",
+              "role": "assistant"
+            },
+            {
+              "content": "Pode adicionar um botão de exportar PDF?",
+              "created_at": "2026-08-05T16:00:04Z",
+              "id": "0191f3b2-4c3a-7b00-8000-000000000013",
+              "role": "user"
+            }
+          ],
+          "next_cursor": "0191f3b2-4c3a-7b00-8000-000000000013"
+        }
+      },
+      "ProjectCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Short project name. Becomes the unique identifier.",
+            "example": "sisvisa"
+          },
+          "repo_url": {
+            "title": "Repo Url",
+            "description": "URL of the existing repository (git@ or https://).",
+            "example": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
+            "type": "string",
+            "nullable": true
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch",
+            "description": "Branch the project works on (used by builds and new chats).",
+            "default": "main",
+            "example": "develop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ProjectCreate",
+        "description": "Creates a project from an EXISTING repository.",
+        "example": {
+          "branch": "develop",
+          "name": "sisvisa",
+          "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git"
+        }
+      },
+      "ProjectOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "title": "User Id",
+            "description": "Owner user id. Null for projects created by machine token before the first login (adopted by the admin on login).",
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "repo_url": {
+            "title": "Repo Url",
+            "type": "string",
+            "nullable": true
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "repo_url",
+          "branch",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectOut",
+        "example": {
+          "branch": "develop",
+          "created_at": "2026-08-05T16:00:00Z",
+          "id": "0191f3b2-4c3a-7b00-8000-000000000001",
+          "name": "sisvisa",
+          "repo_url": "git@bitbucket.org:branef/sisvisa-serr-mobile.git",
+          "updated_at": "2026-08-05T16:00:00Z"
+        }
+      },
+      "ProjectUpdate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "nullable": true
+          },
+          "repo_url": {
+            "title": "Repo Url",
+            "type": "string",
+            "nullable": true
+          },
+          "branch": {
+            "title": "Branch",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "title": "ProjectUpdate",
+        "description": "Partial update — send only the fields you want to change.",
+        "example": {
+          "branch": "develop"
+        }
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "picture_url": {
+            "title": "Picture Url",
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "description": "'admin' or 'member'"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "'active', 'blocked' or 'deleted'"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "picture_url",
+          "role",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UserOut",
+        "example": {
+          "created_at": "2026-08-05T16:00:00Z",
+          "email": "samuel@agapech.com.br",
+          "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
+          "name": "Samuel",
+          "picture_url": "https://lh3.googleusercontent.com/a/...",
+          "role": "admin",
+          "status": "active",
+          "updated_at": "2026-08-05T16:00:00Z"
+        }
+      },
+      "UserUpdate": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "nullable": true
+          },
+          "email": {
+            "title": "Email",
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 3,
+            "nullable": true
+          },
+          "picture_url": {
+            "title": "Picture Url",
+            "type": "string",
+            "maxLength": 1000,
+            "nullable": true
+          }
+        },
+        "type": "object",
+        "title": "UserUpdate",
+        "description": "Partial update of the current user's profile.",
+        "example": {
+          "name": "Samuel G.",
+          "picture_url": "https://lh3.googleusercontent.com/a/new"
+        }
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Token Bearer do Devian — aceita dois formatos:\n1. Token de máquina (DEVIAN_API_TOKEN): atua como o admin (dono).\n2. JWT de sessão: retornado por POST /auth/login após login com Google.\nCole apenas o token, sem o prefixo 'Bearer '.",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Users"
+    },
+    {
+      "name": "Projects"
+    },
+    {
+      "name": "Chats"
+    },
+    {
+      "name": "Messages"
+    },
+    {
+      "name": "Artifacts"
+    },
+    {
+      "name": "Health"
+    }
+  ]
+}

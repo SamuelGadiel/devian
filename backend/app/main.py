@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app import models  # noqa: F401 — registra as tabelas no metadata
 from app.db import engine
 from app.models import Base
-from app.routers import artifacts, chats, health, messages, projects
+from app.routers import artifacts, auth, chats, health, messages, projects, users
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,12 +24,24 @@ app = FastAPI(title="Devian Hub", docs_url=None, redoc_url=None, openapi_url=Non
 DESCRIPTION = """
 API do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.
 
-**Autenticação:** todos os endpoints exigem um **Bearer token** (`DEVIAN_API_TOKEN`).
+**Autenticação:** os endpoints exigem um **Bearer token** com dois formatos:
+
+1. **Token de máquina** (`DEVIAN_API_TOKEN`) — automação/scripts; atua como o admin.
+2. **JWT de sessão** — retornado por `POST /auth/login` após login com a conta
+   Google (via `google_sign_in` no app; sem Firebase). O backend valida o ID
+   token contra as chaves públicas do Google e emite o token de sessão.
+
+Os dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário
+autenticado: cada usuário vê apenas os próprios dados, resolvidos
+automaticamente a partir do token.
+
+Endpoints públicos: `GET /health` e `POST /auth/login`.
 Clique em **Authorize** e cole o token, sem o prefixo `Bearer `.
-Exceção: `GET /health`, que é público.
 """
 
 OPENAPI_TAGS = [
+    {"name": "Auth"},
+    {"name": "Users"},
     {"name": "Projects"},
     {"name": "Chats"},
     {"name": "Messages"},
@@ -39,7 +51,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.5.5",
+    version="0.6.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -93,7 +105,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.5.5",
+        version="0.6.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
@@ -164,6 +176,8 @@ def swagger_ui() -> HTMLResponse:
 
 
 hub.include_router(health.router)
+hub.include_router(auth.router)
+hub.include_router(users.router)
 hub.include_router(projects.router)
 hub.include_router(chats.router)
 hub.include_router(messages.router)

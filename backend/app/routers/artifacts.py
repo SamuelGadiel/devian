@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import require_token
+from app.auth import AuthContext, require_auth
 from app.config import settings
 from app.db import get_db
 
@@ -22,6 +22,16 @@ def _artifacts_dir(project_id: UUID) -> Path:
     return d
 
 
+def _project_belongs_to_user(
+    db: Session, project_id: UUID, user_id: UUID | None
+) -> bool:
+    """Projeto existe e (se há usuário no contexto) pertence a ele."""
+    q = db.query(models.Project).filter(models.Project.id == project_id)
+    if user_id is not None:
+        q = q.filter(models.Project.user_id == user_id)
+    return q.first() is not None
+
+
 @router.get(
     "",
     response_model=list[schemas.ArtifactOut],
@@ -32,9 +42,9 @@ def _artifacts_dir(project_id: UUID) -> Path:
 def list_artifacts(
     project_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
-    if not db.get(models.Project, project_id):
+    if not _project_belongs_to_user(db, project_id, auth.user_id):
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
     return (
         db.query(models.Artifact)
@@ -57,8 +67,10 @@ def download_artifact(
     project_id: UUID,
     artifact_id: UUID,
     db: Session = Depends(get_db),
-    _=Depends(require_token),
+    auth: AuthContext = Depends(require_auth),
 ):
+    if not _project_belongs_to_user(db, project_id, auth.user_id):
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
     artifact = (
         db.query(models.Artifact)
         .filter_by(id=artifact_id, project_id=project_id)
