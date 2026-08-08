@@ -1574,7 +1574,7 @@
             "minLength": 3,
             "title": "Email",
             "description": "E-mail cadastrado.",
-            "example": "samuelgadiel@gmail.com"
+            "example": "user@example.com"
           },
           "password": {
             "type": "string",
@@ -1593,8 +1593,8 @@
         "title": "LoginRequest",
         "description": "Logs in with e-mail + password.",
         "example": {
-          "email": "samuelgadiel@gmail.com",
-          "password": "••••••••••"
+          "email": "user@example.com",
+          "password": "********"
         }
       },
       "LoginResponse": {
@@ -1632,9 +1632,9 @@
           "token_type": "bearer",
           "user": {
             "created_at": "2026-08-05T16:00:00Z",
-            "email": "samuelgadiel@gmail.com",
+            "email": "user@example.com",
             "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-            "name": "Samuel Gadiel de Ávila",
+            "name": "Usuário Exemplo",
             "role": "admin",
             "status": "active",
             "updated_at": "2026-08-05T16:00:00Z"
@@ -1947,9 +1947,9 @@
         "title": "UserOut",
         "example": {
           "created_at": "2026-08-05T16:00:00Z",
-          "email": "samuelgadiel@gmail.com",
+          "email": "user@example.com",
           "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-          "name": "Samuel Gadiel de Ávila",
+          "name": "Usuário Exemplo",
           "role": "admin",
           "status": "active",
           "updated_at": "2026-08-05T16:00:00Z"

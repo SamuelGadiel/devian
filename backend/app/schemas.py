@@ -295,7 +295,7 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"email": "samuelgadiel@gmail.com", "password": "••••••••••"}
+                {"email": "user@example.com", "password": "********"}
             ]
         }
     )
@@ -304,7 +304,7 @@ class LoginRequest(BaseModel):
         min_length=3,
         max_length=255,
         description="E-mail cadastrado.",
-        examples=["samuelgadiel@gmail.com"],
+        examples=["user@example.com"],
     )
     password: str = Field(
         min_length=6,
@@ -347,8 +347,8 @@ class UserOut(BaseModel):
             "examples": [
                 {
                     "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                    "email": "samuelgadiel@gmail.com",
-                    "name": "Samuel Gadiel de Ávila",
+                    "email": "user@example.com",
+                    "name": "Usuário Exemplo",
                     "picture_url": None,
                     "role": "admin",
                     "status": "active",
@@ -381,8 +381,8 @@ class LoginResponse(BaseModel):
                     "token_type": "bearer",
                     "user": {
                         "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                        "email": "samuelgadiel@gmail.com",
-                        "name": "Samuel Gadiel de Ávila",
+                        "email": "user@example.com",
+                        "name": "Usuário Exemplo",
                         "picture_url": None,
                         "role": "admin",
                         "status": "active",
