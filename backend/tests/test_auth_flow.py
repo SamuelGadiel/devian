@@ -58,32 +58,32 @@ def auth(token: str) -> dict:
 
 
 # Setup: admin + member
-admin = seed_user("admin@devian.app", "senha-admin-1", "Admin", "admin")
-member = seed_user("member@devian.app", "senha-member-1", "Member", "member")
+admin = seed_user("admin@example.com", "PASSWORD_HERE", "Admin", "admin")
+member = seed_user("member@example.com", "PASSWORD_HERE", "Member", "member")
 
 # 1. Health público
 r = client.get("/devian/health")
 check("health público", r.status_code == 200 and r.json()["status"] == "ok", str(r.status_code))
 
 # 2. Login correto → access + refresh + user
-r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "senha-admin-1"})
+r = client.post("/devian/auth/login", json={"email": "admin@example.com", "password": "PASSWORD_HERE"})
 check("login ok → 200", r.status_code == 200, r.text[:100])
 body = r.json()
 access = body["access_token"]
 refresh = body["refresh_token"]
 check("login sem token_type", "token_type" not in body)
 check("login sem role/status expostos", "role" not in body["user"] and "status" not in body["user"])
-check("login devolve user admin", body["user"]["email"] == "admin@devian.app")
+check("login devolve user admin", body["user"]["email"] == "admin@example.com")
 
 # 3. Senha errada → 401 (mesma msg p/ e-mail inexistente)
-r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "errada"})
+r = client.post("/devian/auth/login", json={"email": "admin@example.com", "password": "WRONG_PASSWORD"})
 check("senha errada → 401", r.status_code == 401 and "inválidos" in r.json()["message"])
-r = client.post("/devian/auth/login", json={"email": "naoexiste@devian.app", "password": "qualquer"})
+r = client.post("/devian/auth/login", json={"email": "naoexiste@example.com", "password": "WRONG_PASSWORD"})
 check("e-mail inexistente → 401", r.status_code == 401)
 
 # 4. /users/me com access token
 r = client.get("/devian/users/me", headers=auth(access))
-check("GET /users/me → 200", r.status_code == 200 and r.json()["email"] == "admin@devian.app")
+check("GET /users/me → 200", r.status_code == 200 and r.json()["email"] == "admin@example.com")
 
 # 5. Access inválido → 401
 r = client.get("/devian/users/me", headers=auth("not-a-jwt"))
@@ -112,13 +112,13 @@ try:
     orphan_id = str(orphan.id)
 finally:
     db.close()
-r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "senha-admin-1"})
+r = client.post("/devian/auth/login", json={"email": "admin@example.com", "password": "PASSWORD_HERE"})
 access = r.json()["access_token"]
 r = client.get(f"/devian/projects/{orphan_id}", headers=auth(access))
 check("órfão adotado no login do admin", r.status_code == 200 and r.json()["user_id"] == str(admin.id), r.text[:80])
 
 # 9. Scoping: member não vê projetos do admin
-r = client.post("/devian/auth/login", json={"email": "member@devian.app", "password": "senha-member-1"})
+r = client.post("/devian/auth/login", json={"email": "member@example.com", "password": "PASSWORD_HERE"})
 member_access = r.json()["access_token"]
 r = client.get("/devian/projects", headers=auth(member_access))
 check("member não vê projetos do admin", r.json() == [], str(r.json()))
@@ -142,23 +142,23 @@ r = client.post("/devian/auth/logout", json={"refresh_token": new_refresh})
 check("logout idempotente → 204", r.status_code == 204)
 
 # 12. PATCH /users/me troca senha → login com nova ok, antiga 401
-r = client.patch("/devian/users/me", json={"password": "senha-nova-2"}, headers=auth(access))
+r = client.patch("/devian/users/me", json={"password": "PASSWORD_HERE2"}, headers=auth(access))
 check("PATCH senha → 200", r.status_code == 200)
-r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "senha-admin-1"})
+r = client.post("/devian/auth/login", json={"email": "admin@example.com", "password": "PASSWORD_HERE"})
 check("senha antiga → 401", r.status_code == 401)
-r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "senha-nova-2"})
+r = client.post("/devian/auth/login", json={"email": "admin@example.com", "password": "PASSWORD_HERE2"})
 check("senha nova → 200", r.status_code == 200)
 
 # 13. Usuário inativo → 403 no login
 db = SessionLocal()
 try:
-    blocked = db.query(models.User).filter_by(email="member@devian.app").first()
+    blocked = db.query(models.User).filter_by(email="member@example.com").first()
     assert blocked is not None
     blocked.status = "deleted"
     db.commit()
 finally:
     db.close()
-r = client.post("/devian/auth/login", json={"email": "member@devian.app", "password": "senha-member-1"})
+r = client.post("/devian/auth/login", json={"email": "member@example.com", "password": "PASSWORD_HERE"})
 check("usuário inativo → 403", r.status_code == 403)
 
 print("\nTODOS OS TESTES PASSARAM")

@@ -295,7 +295,7 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"email": "user@example.com", "password": "********"}
+                {"email": "EMAIL_HERE", "password": "PASSWORD_HERE"}
             ]
         }
     )
@@ -304,7 +304,7 @@ class LoginRequest(BaseModel):
         min_length=3,
         max_length=255,
         description="E-mail cadastrado.",
-        examples=["user@example.com"],
+        examples=["EMAIL_HERE"],
     )
     password: str = Field(
         min_length=6,
@@ -349,7 +349,7 @@ class UserOut(BaseModel):
             "examples": [
                 {
                     "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                    "email": "user@example.com",
+                    "email": "EMAIL_HERE",
                     "name": "Usuário Exemplo",
                     "picture_url": None,
                     "created_at": "2026-08-05T16:00:00Z",
@@ -378,7 +378,7 @@ class LoginResponse(BaseModel):
                     "refresh_token": "abc123...",
                     "user": {
                         "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                        "email": "user@example.com",
+                        "email": "EMAIL_HERE",
                         "name": "Usuário Exemplo",
                         "picture_url": None,
                         "created_at": "2026-08-05T16:00:00Z",
@@ -409,7 +409,7 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"name": "Samuel G.", "picture_url": "https://exemplo.com/foto.jpg"}
+                {"name": "Usuário Exemplo", "picture_url": "https://exemplo.com/foto.jpg"}
             ]
         }
     )

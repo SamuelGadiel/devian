@@ -1574,7 +1574,7 @@
             "minLength": 3,
             "title": "Email",
             "description": "E-mail cadastrado.",
-            "example": "user@example.com"
+            "example": "EMAIL_HERE"
           },
           "password": {
             "type": "string",
@@ -1593,8 +1593,8 @@
         "title": "LoginRequest",
         "description": "Logs in with e-mail + password.",
         "example": {
-          "email": "user@example.com",
-          "password": "********"
+          "email": "EMAIL_HERE",
+          "password": "PASSWORD_HERE"
         }
       },
       "LoginResponse": {
@@ -1626,7 +1626,7 @@
           "refresh_token": "abc123...",
           "user": {
             "created_at": "2026-08-05T16:00:00Z",
-            "email": "user@example.com",
+            "email": "EMAIL_HERE",
             "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
             "name": "Usuário Exemplo",
             "updated_at": "2026-08-05T16:00:00Z"
@@ -1928,7 +1928,7 @@
         "description": "Perfil público do usuário — role/status ficam internos ao backend.",
         "example": {
           "created_at": "2026-08-05T16:00:00Z",
-          "email": "user@example.com",
+          "email": "EMAIL_HERE",
           "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
           "name": "Usuário Exemplo",
           "updated_at": "2026-08-05T16:00:00Z"
@@ -1969,7 +1969,7 @@
         "title": "UserUpdate",
         "description": "Partial update of the current user's profile.",
         "example": {
-          "name": "Samuel G.",
+          "name": "Usuário Exemplo",
           "picture_url": "https://exemplo.com/foto.jpg"
         }
       },

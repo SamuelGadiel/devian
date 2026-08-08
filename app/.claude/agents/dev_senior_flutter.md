@@ -400,7 +400,7 @@ group('LoginImplementation', () {
     when(() => repository.login(email: any(named: 'email'), password: any(named: 'password')))
         .thenAnswer((_) async => Right(mockUser));
 
-    final result = await login(email: 'a@a.com', password: 'x');
+    final result = await login(email: 'EMAIL_HERE', password: 'PASSWORD_HERE');
 
     expect(result.isRight(), true);
   });
@@ -415,7 +415,7 @@ blocTest<AuthBloc, AuthStates>(
         .thenAnswer((_) async => Right(mockUser));
     return AuthBloc(login);
   },
-  act: (bloc) => bloc.add(const LoginEvent(email: 'a@a.com', password: 'x')),
+  act: (bloc) => bloc.add(const LoginEvent(email: 'EMAIL_HERE', password: 'PASSWORD_HERE')),
   expect: () => [const LoginLoadingState(), LoginSuccessState(mockUser)],
 );
 ```
