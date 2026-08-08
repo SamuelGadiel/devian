@@ -19,7 +19,7 @@ bearer_scheme = HTTPBearer(
     auto_error=False,
     description=(
         "Access token (JWT) do Devian — retornado por POST /auth/login.\n"
-        "Cole apenas o token, sem o prefixo 'Bearer '."
+        "Pode colar com ou sem o prefixo 'Bearer '."
     ),
 )
 
@@ -117,9 +117,21 @@ def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Normaliza o prefixo: aceita "Bearer <token>" ou só "<token>" no campo
+    # do Authorize (o Swagger envia o valor digitado direto no header).
+    raw = creds.credentials.strip()
+    if raw.lower().startswith("bearer "):
+        raw = raw[7:].strip()
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Não autorizado: token Bearer ausente",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = jwt.decode(
-            creds.credentials, settings.session_jwt_secret, algorithms=["HS256"]
+            raw, settings.session_jwt_secret, algorithms=["HS256"]
         )
         if payload.get("type") != "access":
             raise ValueError("não é access token")

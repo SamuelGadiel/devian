@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Devian Hub API",
-    "description": "\nAPI do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.\n\n**Autenticação:** endpoints protegidos exigem um **access token** (JWT)\nenviado como `Authorization: Bearer <token>`.\n\n1. `POST /auth/login` com **e-mail + senha** devolve o par\n   `{access_token, refresh_token}`.\n2. O `access_token` (curto) autentica as chamadas.\n3. Quando ele expirar, `POST /auth/refresh` com o `refresh_token` devolve um\n   par novo (o token antigo é revogado — rotação).\n4. `POST /auth/logout` revoga o refresh token e encerra a sessão.\n\nOs dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário\nautenticado: cada usuário vê apenas os próprios dados, resolvidos\nautomaticamente a partir do token.\n\nEndpoints públicos: `GET /health`, `POST /auth/login` e `POST /auth/refresh`.\nClique em **Authorize** e cole o `access_token`, sem o prefixo `Bearer `.\n",
-    "version": "0.7.0"
+    "description": "Devian Hub API — projetos, chats (Claude Code) e artefatos de build.",
+    "version": "1.7.0"
   },
   "servers": [
     {
@@ -2038,7 +2038,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "type": "http",
-        "description": "Access token (JWT) do Devian — retornado por POST /auth/login.\nCole apenas o token, sem o prefixo 'Bearer '.",
+        "description": "Access token (JWT) do Devian — retornado por POST /auth/login.\nPode colar com ou sem o prefixo 'Bearer '.",
         "scheme": "bearer"
       }
     }

@@ -21,26 +21,9 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 # ------------------------------------------------------------
 app = FastAPI(title="Devian Hub", docs_url=None, redoc_url=None, openapi_url=None)
 
-DESCRIPTION = """
-API do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.
-
-**Autenticação:** endpoints protegidos exigem um **access token** (JWT)
-enviado como `Authorization: Bearer <token>`.
-
-1. `POST /auth/login` com **e-mail + senha** devolve o par
-   `{access_token, refresh_token}`.
-2. O `access_token` (curto) autentica as chamadas.
-3. Quando ele expirar, `POST /auth/refresh` com o `refresh_token` devolve um
-   par novo (o token antigo é revogado — rotação).
-4. `POST /auth/logout` revoga o refresh token e encerra a sessão.
-
-Os dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário
-autenticado: cada usuário vê apenas os próprios dados, resolvidos
-automaticamente a partir do token.
-
-Endpoints públicos: `GET /health`, `POST /auth/login` e `POST /auth/refresh`.
-Clique em **Authorize** e cole o `access_token`, sem o prefixo `Bearer `.
-"""
+DESCRIPTION = (
+    "Devian Hub API — projetos, chats (Claude Code) e artefatos de build."
+)
 
 OPENAPI_TAGS = [
     {"name": "Auth"},
@@ -54,7 +37,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.7.0",
+    version="1.7.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -108,7 +91,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.7.0",
+        version="1.7.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,
