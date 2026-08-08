@@ -71,8 +71,9 @@ check("login ok → 200", r.status_code == 200, r.text[:100])
 body = r.json()
 access = body["access_token"]
 refresh = body["refresh_token"]
-check("login devolve token_type=bearer", body["token_type"] == "bearer")
-check("login devolve user admin", body["user"]["email"] == "admin@devian.app" and body["user"]["role"] == "admin")
+check("login sem token_type", "token_type" not in body)
+check("login sem role/status expostos", "role" not in body["user"] and "status" not in body["user"])
+check("login devolve user admin", body["user"]["email"] == "admin@devian.app")
 
 # 3. Senha errada → 401 (mesma msg p/ e-mail inexistente)
 r = client.post("/devian/auth/login", json={"email": "admin@devian.app", "password": "errada"})

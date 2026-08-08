@@ -34,7 +34,6 @@ def _issue_tokens(db: Session, user: models.User) -> schemas.LoginResponse:
     return schemas.LoginResponse(
         access_token=access,
         refresh_token=refresh,
-        token_type="bearer",
         user=schemas.UserOut.model_validate(user),
     )
 

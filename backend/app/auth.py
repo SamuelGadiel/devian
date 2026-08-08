@@ -63,7 +63,6 @@ def create_access_token(user: User) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user.id),
-        "role": user.role,
         "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_ttl_minutes),

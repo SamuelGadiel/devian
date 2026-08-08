@@ -341,6 +341,8 @@ class LogoutRequest(BaseModel):
 
 
 class UserOut(BaseModel):
+    """Perfil público do usuário — role/status ficam internos ao backend."""
+
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={
@@ -350,8 +352,6 @@ class UserOut(BaseModel):
                     "email": "user@example.com",
                     "name": "Usuário Exemplo",
                     "picture_url": None,
-                    "role": "admin",
-                    "status": "active",
                     "created_at": "2026-08-05T16:00:00Z",
                     "updated_at": "2026-08-05T16:00:00Z",
                 }
@@ -363,8 +363,6 @@ class UserOut(BaseModel):
     email: str
     name: str
     picture_url: str | None
-    role: str = Field(description="'admin' or 'member'")
-    status: str = Field(description="'active', 'blocked' or 'deleted'")
     created_at: BrDateTime
     updated_at: BrDateTime
 
@@ -378,14 +376,11 @@ class LoginResponse(BaseModel):
                 {
                     "access_token": "eyJhbG...VCJ9...",
                     "refresh_token": "abc123...",
-                    "token_type": "bearer",
                     "user": {
                         "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
                         "email": "user@example.com",
                         "name": "Usuário Exemplo",
                         "picture_url": None,
-                        "role": "admin",
-                        "status": "active",
                         "created_at": "2026-08-05T16:00:00Z",
                         "updated_at": "2026-08-05T16:00:00Z",
                     },
@@ -400,7 +395,6 @@ class LoginResponse(BaseModel):
     refresh_token: str = Field(
         description="Token de refresh opaco (longo) — use em POST /auth/refresh."
     )
-    token_type: str = Field(default="bearer")
     user: UserOut
 
 
