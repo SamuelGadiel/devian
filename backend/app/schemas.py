@@ -285,28 +285,58 @@ class ArtifactOut(BaseModel):
 
 
 # ============================================================
-# Auth (POST /auth/login — Google ID token → sessão)
+# Auth (e-mail + senha → access + refresh tokens)
 # ============================================================
 
 
 class LoginRequest(BaseModel):
-    """Exchanges a Google ID token for a Devian session token."""
+    """Logs in with e-mail + password."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."}
+                {"email": "samuelgadiel@gmail.com", "password": "••••••••••"}
             ]
         }
     )
 
-    id_token: str = Field(
-        description=(
-            "Google ID token (JWT) returned by google_sign_in "
-            "(with serverClientId set). The backend validates its signature "
-            "against Google's public keys — no Firebase involved."
-        ),
-        examples=["eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."],
+    email: str = Field(
+        min_length=3,
+        max_length=255,
+        description="E-mail cadastrado.",
+        examples=["samuelgadiel@gmail.com"],
+    )
+    password: str = Field(
+        min_length=6,
+        max_length=128,
+        description="Senha.",
+        examples=["••••••••••"],
+    )
+
+
+class RefreshRequest(BaseModel):
+    """Exchanges a refresh token for a new token pair (rotation)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"refresh_token": "abc123..."}]}
+    )
+
+    refresh_token: str = Field(
+        description="Refresh token opaco retornado por login/refresh.",
+        examples=["abc123..."],
+    )
+
+
+class LogoutRequest(BaseModel):
+    """Revokes a refresh token (ends that device's session)."""
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"refresh_token": "abc123..."}]}
+    )
+
+    refresh_token: str = Field(
+        description="Refresh token da sessão a encerrar.",
+        examples=["abc123..."],
     )
 
 
@@ -317,9 +347,9 @@ class UserOut(BaseModel):
             "examples": [
                 {
                     "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                    "email": "samuel@agapech.com.br",
-                    "name": "Samuel",
-                    "picture_url": "https://lh3.googleusercontent.com/a/...",
+                    "email": "samuelgadiel@gmail.com",
+                    "name": "Samuel Gadiel de Ávila",
+                    "picture_url": None,
                     "role": "admin",
                     "status": "active",
                     "created_at": "2026-08-05T16:00:00Z",
@@ -340,18 +370,20 @@ class UserOut(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Session token + user profile."""
+    """Token pair + user profile."""
 
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
                 {
-                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "access_token": "eyJhbG...VCJ9...",
+                    "refresh_token": "abc123...",
+                    "token_type": "bearer",
                     "user": {
                         "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-                        "email": "samuel@agapech.com.br",
-                        "name": "Samuel",
-                        "picture_url": "https://lh3.googleusercontent.com/a/...",
+                        "email": "samuelgadiel@gmail.com",
+                        "name": "Samuel Gadiel de Ávila",
+                        "picture_url": None,
                         "role": "admin",
                         "status": "active",
                         "created_at": "2026-08-05T16:00:00Z",
@@ -362,9 +394,13 @@ class LoginResponse(BaseModel):
         }
     )
 
-    token: str = Field(
-        description="Devian session JWT — send as `Authorization: Bearer <token>`."
+    access_token: str = Field(
+        description="JWT de acesso (curto) — envie como `Authorization: Bearer <token>`."
     )
+    refresh_token: str = Field(
+        description="Token de refresh opaco (longo) — use em POST /auth/refresh."
+    )
+    token_type: str = Field(default="bearer")
     user: UserOut
 
 
@@ -379,7 +415,7 @@ class UserUpdate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
-                {"name": "Samuel G.", "picture_url": "https://lh3.googleusercontent.com/a/new"}
+                {"name": "Samuel G.", "picture_url": "https://exemplo.com/foto.jpg"}
             ]
         }
     )
@@ -387,3 +423,9 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     email: str | None = Field(default=None, min_length=3, max_length=255)
     picture_url: str | None = Field(default=None, max_length=1000)
+    password: str | None = Field(
+        default=None,
+        min_length=6,
+        max_length=128,
+        description="Nova senha (opcional — troca a senha atual).",
+    )

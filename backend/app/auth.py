@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+from secrets import token_urlsafe
 from uuid import UUID
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,46 +11,99 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import User
+from app.models import User, UserSession
 
 # HTTPBearer padrão do OpenAPI: faz o Swagger UI exibir o botão "Authorize"
 # e a cadeirinha de segurança em cada endpoint protegido.
 bearer_scheme = HTTPBearer(
     auto_error=False,
     description=(
-        "Token Bearer do Devian — aceita dois formatos:\n"
-        "1. Token de máquina (DEVIAN_API_TOKEN): atua como o admin (dono).\n"
-        "2. JWT de sessão: retornado por POST /auth/login após login com Google.\n"
+        "Access token (JWT) do Devian — retornado por POST /auth/login.\n"
         "Cole apenas o token, sem o prefixo 'Bearer '."
     ),
 )
 
 
 class AuthContext:
-    """Identidade resolvida a partir do token.
+    """Usuário autenticado, resolvido a partir do access token."""
 
-    - ``user`` preenchido: usuário autenticado (JWT de sessão) ou o admin
-      (token de máquina, quando o primeiro login já aconteceu).
-    - ``user`` None: token de máquina antes de existir qualquer usuário
-      (estado pré-migração) — acesso irrestrito, sem filtro por dono.
-    """
-
-    def __init__(self, user: User | None):
+    def __init__(self, user: User):
         self.user = user
 
     @property
-    def user_id(self) -> UUID | None:
-        return self.user.id if self.user else None
+    def user_id(self) -> UUID:
+        return self.user.id
 
 
-def _machine_admin(db: Session) -> User | None:
-    """Token de máquina age como o admin (dono do Devian)."""
-    return (
-        db.query(User)
-        .filter(User.role == "admin", User.status == "active")
-        .order_by(User.created_at.asc())
+# ============================================================
+# Senha (bcrypt — nunca armazenada em texto puro)
+# ============================================================
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(
+            password.encode("utf-8"), password_hash.encode("utf-8")
+        )
+    except ValueError:
+        return False
+
+
+# ============================================================
+# Tokens: access (JWT curto, stateless) + refresh (opaco, no banco)
+# ============================================================
+
+
+def create_access_token(user: User) -> str:
+    """JWT de acesso — identifica o usuário; expira em minutos."""
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": str(user.id),
+        "role": user.role,
+        "type": "access",
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.access_token_ttl_minutes),
+    }
+    return jwt.encode(payload, settings.session_jwt_secret, algorithm="HS256")
+
+
+def _hash_refresh(raw: str) -> str:
+    return sha256(raw.encode("utf-8")).hexdigest()
+
+
+def create_refresh_token(db: Session, user: User) -> str:
+    """Refresh token opaco + registro de sessão no banco (só o hash fica)."""
+    raw = token_urlsafe(48)
+    session = UserSession(
+        user_id=user.id,
+        token_hash=_hash_refresh(raw),
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(days=settings.refresh_token_ttl_days),
+    )
+    db.add(session)
+    db.commit()
+    return raw
+
+
+def revoke_refresh_token(db: Session, raw: str) -> None:
+    """Revoga a sessão do refresh token (idempotente)."""
+    session = (
+        db.query(UserSession)
+        .filter(UserSession.token_hash == _hash_refresh(raw))
         .first()
     )
+    if session is not None and session.revoked_at is None:
+        session.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+
+
+# ============================================================
+# Dependência de auth — TODO endpoint protegido usa isso
+# ============================================================
 
 
 def require_auth(
@@ -61,17 +117,12 @@ def require_auth(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = creds.credentials
-
-    # Token de máquina (DEVIAN_API_TOKEN) — automação, atua como o admin.
-    if token == settings.api_token:
-        return AuthContext(_machine_admin(db))
-
-    # JWT de sessão (emitido por POST /auth/login).
     try:
         payload = jwt.decode(
-            token, settings.session_jwt_secret, algorithms=["HS256"]
+            creds.credentials, settings.session_jwt_secret, algorithms=["HS256"]
         )
+        if payload.get("type") != "access":
+            raise ValueError("não é access token")
         user_id = UUID(payload["sub"])
     except (jwt.PyJWTError, KeyError, TypeError, ValueError):
         raise HTTPException(
@@ -92,15 +143,3 @@ def require_auth(
             detail="Conta inativa ou deletada",
         )
     return AuthContext(user)
-
-
-def create_session_token(user: User) -> str:
-    """JWT de sessão do Devian: identifica o usuário nas próximas chamadas."""
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": str(user.id),
-        "role": user.role,
-        "iat": now,
-        "exp": now + timedelta(days=settings.session_ttl_days),
-    }
-    return jwt.encode(payload, settings.session_jwt_secret, algorithm="HS256")

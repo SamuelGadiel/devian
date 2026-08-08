@@ -15,8 +15,8 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
-    google_sub: Mapped[str] = mapped_column(String(255), unique=True)
     email: Mapped[str] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), default="")
     name: Mapped[str] = mapped_column(String(255), default="")
     picture_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="member")
@@ -27,6 +27,35 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserSession(Base):
+    """Sessão de refresh token (opaco, armazenado como hash SHA-256).
+
+    Rotacionado a cada refresh; revogado no logout. `revoked_at` nulo =
+    sessão viva.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    user: Mapped[User] = relationship(back_populates="sessions")
 
 
 class Project(Base):

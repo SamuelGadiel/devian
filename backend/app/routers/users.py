@@ -2,14 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import AuthContext, require_auth
+from app.auth import AuthContext, hash_password, require_auth
 from app.db import get_db
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 UNAUTHORIZED = {
     401: {
-        "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+        "description": "Token ausente, inválido ou expirado",
         "model": schemas.ErrorOut,
     }
 }
@@ -19,12 +19,7 @@ VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": s
 
 
 def _current_user(auth: AuthContext) -> models.User:
-    """O usuário por trás do token. Token de máquina não tem perfil → 401."""
-    if auth.user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Autenticação de usuário necessária (token de máquina não tem perfil)",
-        )
+    """O usuário por trás do access token."""
     return auth.user
 
 
@@ -65,6 +60,8 @@ def update_me(
         user.name = data["name"]
     if "picture_url" in data:
         user.picture_url = data["picture_url"]
+    if "password" in data and data["password"]:
+        user.password_hash = hash_password(data["password"])
 
     db.commit()
     db.refresh(user)

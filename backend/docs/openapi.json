@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Devian Hub API",
-    "description": "\nAPI do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.\n\n**Autenticação:** os endpoints exigem um **Bearer token** com dois formatos:\n\n1. **Token de máquina** (`DEVIAN_API_TOKEN`) — automação/scripts; atua como o admin.\n2. **JWT de sessão** — retornado por `POST /auth/login` após login com a conta\n   Google (via `google_sign_in` no app; sem Firebase). O backend valida o ID\n   token contra as chaves públicas do Google e emite o token de sessão.\n\nOs dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário\nautenticado: cada usuário vê apenas os próprios dados, resolvidos\nautomaticamente a partir do token.\n\nEndpoints públicos: `GET /health` e `POST /auth/login`.\nClique em **Authorize** e cole o token, sem o prefixo `Bearer `.\n",
-    "version": "0.6.0"
+    "description": "\nAPI do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.\n\n**Autenticação:** endpoints protegidos exigem um **access token** (JWT)\nenviado como `Authorization: Bearer <token>`.\n\n1. `POST /auth/login` com **e-mail + senha** devolve o par\n   `{access_token, refresh_token}`.\n2. O `access_token` (curto) autentica as chamadas.\n3. Quando ele expirar, `POST /auth/refresh` com o `refresh_token` devolve um\n   par novo (o token antigo é revogado — rotação).\n4. `POST /auth/logout` revoga o refresh token e encerra a sessão.\n\nOs dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário\nautenticado: cada usuário vê apenas os próprios dados, resolvidos\nautomaticamente a partir do token.\n\nEndpoints públicos: `GET /health`, `POST /auth/login` e `POST /auth/refresh`.\nClique em **Authorize** e cole o `access_token`, sem o prefixo `Bearer `.\n",
+    "version": "0.7.0"
   },
   "servers": [
     {
@@ -41,7 +41,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Login with Google",
+        "summary": "Login",
         "operationId": "login_auth_login_post",
         "requestBody": {
           "content": {
@@ -55,7 +55,7 @@
         },
         "responses": {
           "200": {
-            "description": "Valida o ID token do Google, cria/atualiza o usuário e devolve o token de sessão + perfil. Público (não exige Bearer).",
+            "description": "Confere e-mail + senha e devolve o par de tokens (access + refresh) e o perfil. Público (não exige Bearer).",
             "content": {
               "application/json": {
                 "schema": {
@@ -65,7 +65,7 @@
             }
           },
           "401": {
-            "description": "Token do Google inválido ou expirado",
+            "description": "Credenciais inválidas ou token inválido/expirado",
             "content": {
               "application/json": {
                 "schema": {
@@ -75,7 +75,7 @@
             }
           },
           "403": {
-            "description": "Conta não autorizada, inativa ou deletada",
+            "description": "Conta inativa ou deletada",
             "content": {
               "application/json": {
                 "schema": {
@@ -84,8 +84,8 @@
               }
             }
           },
-          "503": {
-            "description": "Autenticação não configurada (GOOGLE_CLIENT_ID / SESSION_JWT_SECRET)",
+          "422": {
+            "description": "Corpo da requisição inválido",
             "content": {
               "application/json": {
                 "schema": {
@@ -93,6 +93,91 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Refresh session",
+        "operationId": "refresh_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Troca um refresh token válido por um novo par (rotação: o token antigo é revogado). Público (não exige Bearer).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciais inválidas ou token inválido/expirado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Conta inativa ou deletada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo da requisição inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_auth_logout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Revoga o refresh token (encerra a sessão do dispositivo). Idempotente: sempre 204, mesmo com token já revogado."
           },
           "422": {
             "description": "Corpo da requisição inválido",
@@ -126,7 +211,7 @@
             }
           },
           "401": {
-            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "description": "Token ausente, inválido ou expirado",
             "content": {
               "application/json": {
                 "schema": {
@@ -163,7 +248,7 @@
             "description": "Inativa a conta do usuário (soft delete: status = 'deleted'). Login futuro com a mesma conta Google retorna 403."
           },
           "401": {
-            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "description": "Token ausente, inválido ou expirado",
             "content": {
               "application/json": {
                 "schema": {
@@ -217,7 +302,7 @@
             }
           },
           "401": {
-            "description": "Token ausente, inválido ou sem usuário (token de máquina)",
+            "description": "Token ausente, inválido ou expirado",
             "content": {
               "application/json": {
                 "schema": {
@@ -1483,29 +1568,51 @@
       },
       "LoginRequest": {
         "properties": {
-          "id_token": {
+          "email": {
             "type": "string",
-            "title": "Id Token",
-            "description": "Google ID token (JWT) returned by google_sign_in (with serverClientId set). The backend validates its signature against Google's public keys — no Firebase involved.",
-            "example": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Email",
+            "description": "E-mail cadastrado.",
+            "example": "samuelgadiel@gmail.com"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 6,
+            "title": "Password",
+            "description": "Senha.",
+            "example": "••••••••••"
           }
         },
         "type": "object",
         "required": [
-          "id_token"
+          "email",
+          "password"
         ],
         "title": "LoginRequest",
-        "description": "Exchanges a Google ID token for a Devian session token.",
+        "description": "Logs in with e-mail + password.",
         "example": {
-          "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE..."
+          "email": "samuelgadiel@gmail.com",
+          "password": "••••••••••"
         }
       },
       "LoginResponse": {
         "properties": {
-          "token": {
+          "access_token": {
             "type": "string",
-            "title": "Token",
-            "description": "Devian session JWT — send as `Authorization: Bearer <token>`."
+            "title": "Access Token",
+            "description": "JWT de acesso (curto) — envie como `Authorization: Bearer <token>`."
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "Token de refresh opaco (longo) — use em POST /auth/refresh."
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
           },
           "user": {
             "$ref": "#/components/schemas/UserOut"
@@ -1513,23 +1620,44 @@
         },
         "type": "object",
         "required": [
-          "token",
+          "access_token",
+          "refresh_token",
           "user"
         ],
         "title": "LoginResponse",
-        "description": "Session token + user profile.",
+        "description": "Token pair + user profile.",
         "example": {
-          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "access_token": "eyJhbG...VCJ9...",
+          "refresh_token": "abc123...",
+          "token_type": "bearer",
           "user": {
             "created_at": "2026-08-05T16:00:00Z",
-            "email": "samuel@agapech.com.br",
+            "email": "samuelgadiel@gmail.com",
             "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-            "name": "Samuel",
-            "picture_url": "https://lh3.googleusercontent.com/a/...",
+            "name": "Samuel Gadiel de Ávila",
             "role": "admin",
             "status": "active",
             "updated_at": "2026-08-05T16:00:00Z"
           }
+        }
+      },
+      "LogoutRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "Refresh token da sessão a encerrar.",
+            "example": "abc123..."
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "LogoutRequest",
+        "description": "Revokes a refresh token (ends that device's session).",
+        "example": {
+          "refresh_token": "abc123..."
         }
       },
       "MessageCreate": {
@@ -1747,6 +1875,25 @@
           "branch": "develop"
         }
       },
+      "RefreshRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "Refresh token opaco retornado por login/refresh.",
+            "example": "abc123..."
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest",
+        "description": "Exchanges a refresh token for a new token pair (rotation).",
+        "example": {
+          "refresh_token": "abc123..."
+        }
+      },
       "UserOut": {
         "properties": {
           "id": {
@@ -1800,10 +1947,9 @@
         "title": "UserOut",
         "example": {
           "created_at": "2026-08-05T16:00:00Z",
-          "email": "samuel@agapech.com.br",
+          "email": "samuelgadiel@gmail.com",
           "id": "0191f3b2-4c3a-7b00-8000-0000000000ff",
-          "name": "Samuel",
-          "picture_url": "https://lh3.googleusercontent.com/a/...",
+          "name": "Samuel Gadiel de Ávila",
           "role": "admin",
           "status": "active",
           "updated_at": "2026-08-05T16:00:00Z"
@@ -1830,6 +1976,14 @@
             "type": "string",
             "maxLength": 1000,
             "nullable": true
+          },
+          "password": {
+            "title": "Password",
+            "description": "Nova senha (opcional — troca a senha atual).",
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 6,
+            "nullable": true
           }
         },
         "type": "object",
@@ -1837,7 +1991,7 @@
         "description": "Partial update of the current user's profile.",
         "example": {
           "name": "Samuel G.",
-          "picture_url": "https://lh3.googleusercontent.com/a/new"
+          "picture_url": "https://exemplo.com/foto.jpg"
         }
       },
       "ValidationError": {
@@ -1884,7 +2038,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "type": "http",
-        "description": "Token Bearer do Devian — aceita dois formatos:\n1. Token de máquina (DEVIAN_API_TOKEN): atua como o admin (dono).\n2. JWT de sessão: retornado por POST /auth/login após login com Google.\nCole apenas o token, sem o prefixo 'Bearer '.",
+        "description": "Access token (JWT) do Devian — retornado por POST /auth/login.\nCole apenas o token, sem o prefixo 'Bearer '.",
         "scheme": "bearer"
       }
     }

@@ -24,19 +24,22 @@ app = FastAPI(title="Devian Hub", docs_url=None, redoc_url=None, openapi_url=Non
 DESCRIPTION = """
 API do hub do **Devian** — projetos, chats (Claude Code) e artefatos de build.
 
-**Autenticação:** os endpoints exigem um **Bearer token** com dois formatos:
+**Autenticação:** endpoints protegidos exigem um **access token** (JWT)
+enviado como `Authorization: Bearer <token>`.
 
-1. **Token de máquina** (`DEVIAN_API_TOKEN`) — automação/scripts; atua como o admin.
-2. **JWT de sessão** — retornado por `POST /auth/login` após login com a conta
-   Google (via `google_sign_in` no app; sem Firebase). O backend valida o ID
-   token contra as chaves públicas do Google e emite o token de sessão.
+1. `POST /auth/login` com **e-mail + senha** devolve o par
+   `{access_token, refresh_token}`.
+2. O `access_token` (curto) autentica as chamadas.
+3. Quando ele expirar, `POST /auth/refresh` com o `refresh_token` devolve um
+   par novo (o token antigo é revogado — rotação).
+4. `POST /auth/logout` revoga o refresh token e encerra a sessão.
 
 Os dados (projetos, chats, mensagens e artefatos) são escopados pelo usuário
 autenticado: cada usuário vê apenas os próprios dados, resolvidos
 automaticamente a partir do token.
 
-Endpoints públicos: `GET /health` e `POST /auth/login`.
-Clique em **Authorize** e cole o token, sem o prefixo `Bearer `.
+Endpoints públicos: `GET /health`, `POST /auth/login` e `POST /auth/refresh`.
+Clique em **Authorize** e cole o `access_token`, sem o prefixo `Bearer `.
 """
 
 OPENAPI_TAGS = [
@@ -51,7 +54,7 @@ OPENAPI_TAGS = [
 
 hub = FastAPI(
     title="Devian Hub API",
-    version="0.6.0",
+    version="0.7.0",
     description=DESCRIPTION,
     openapi_tags=OPENAPI_TAGS,
     docs_url=None,   # /swagger é servido manualmente (Swagger UI 4.x clássica)
@@ -105,7 +108,7 @@ def _custom_openapi() -> dict:
         return hub.openapi_schema
     schema = get_openapi(
         title="Devian Hub API",
-        version="0.6.0",
+        version="0.7.0",
         openapi_version="3.0.3",
         description=DESCRIPTION,
         routes=hub.routes,

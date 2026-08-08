@@ -1,111 +1,118 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import create_session_token
-from app.config import settings
+from app.auth import (
+    _hash_refresh,
+    create_access_token,
+    create_refresh_token,
+    revoke_refresh_token,
+    verify_password,
+)
 from app.db import get_db
-from app.services.google_auth import GoogleTokenError, verify_google_id_token
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 UNAUTHORIZED = {
-    401: {"description": "Token do Google inválido ou expirado", "model": schemas.ErrorOut}
+    401: {
+        "description": "Credenciais inválidas ou token inválido/expirado",
+        "model": schemas.ErrorOut,
+    }
 }
 FORBIDDEN = {
-    403: {
-        "description": "Conta não autorizada, inativa ou deletada",
-        "model": schemas.ErrorOut,
-    }
-}
-SERVICE_UNAVAILABLE = {
-    503: {
-        "description": "Autenticação não configurada (GOOGLE_CLIENT_ID / SESSION_JWT_SECRET)",
-        "model": schemas.ErrorOut,
-    }
+    403: {"description": "Conta inativa ou deletada", "model": schemas.ErrorOut}
 }
 VALIDATION = {422: {"description": "Corpo da requisição inválido", "model": schemas.ErrorOut}}
 
 
-def _allowed_emails() -> set[str]:
-    return {
-        e.strip().lower()
-        for e in settings.allowed_login_emails.split(",")
-        if e.strip()
-    }
+def _issue_tokens(db: Session, user: models.User) -> schemas.LoginResponse:
+    """Gera o par access + refresh e monta a resposta padrão."""
+    access = create_access_token(user)
+    refresh = create_refresh_token(db, user)
+    return schemas.LoginResponse(
+        access_token=access,
+        refresh_token=refresh,
+        token_type="bearer",
+        user=schemas.UserOut.model_validate(user),
+    )
 
 
 @router.post(
     "/login",
     response_model=schemas.LoginResponse,
-    summary="Login with Google",
+    summary="Login",
     response_description=(
-        "Valida o ID token do Google, cria/atualiza o usuário e devolve o "
-        "token de sessão + perfil. Público (não exige Bearer)."
+        "Confere e-mail + senha e devolve o par de tokens (access + refresh) "
+        "e o perfil. Público (não exige Bearer)."
     ),
-    responses={**UNAUTHORIZED, **FORBIDDEN, **SERVICE_UNAVAILABLE, **VALIDATION},
+    responses={**UNAUTHORIZED, **FORBIDDEN, **VALIDATION},
 )
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
-    if not settings.google_client_id:
-        raise HTTPException(
-            status_code=503,
-            detail="Autenticação não configurada: DEVIAN_GOOGLE_CLIENT_ID vazio",
-        )
-    if settings.session_jwt_secret == "troque-me":
-        raise HTTPException(
-            status_code=503,
-            detail="Autenticação não configurada: DEVIAN_SESSION_JWT_SECRET no default",
-        )
+    email = req.email.strip().lower()
+    user = db.query(models.User).filter_by(email=email).first()
 
-    try:
-        info = verify_google_id_token(req.id_token, settings.google_client_id)
-    except GoogleTokenError as exc:
-        raise HTTPException(
-            status_code=401, detail=f"Token do Google inválido: {exc}"
-        ) from exc
+    # Mesma mensagem para e-mail inexistente e senha errada (não vaza qual é).
+    if user is None or not verify_password(req.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="E-mail ou senha inválidos")
 
-    sub = str(info["sub"])
-    email = str(info.get("email") or "").lower()
-    name = str(info.get("name") or "")
-    raw_picture = info.get("picture")
-    picture = str(raw_picture) if raw_picture else None
-
-    user = db.query(models.User).filter_by(google_sub=sub).first()
-    if user is None:
-        # Primeiro usuário do sistema = admin (dono). Demais precisam estar
-        # no allowlist (ALLOWED_LOGIN_EMAILS) — senão nem são criados.
-        is_first = db.query(models.User).count() == 0
-        if not is_first and email not in _allowed_emails():
-            raise HTTPException(status_code=403, detail="Conta não autorizada no Devian")
-        user = models.User(
-            google_sub=sub,
-            email=email,
-            name=name,
-            picture_url=picture,
-            role="admin" if is_first else "member",
-            status="active",
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    else:
-        if user.status != "active":
-            raise HTTPException(status_code=403, detail="Conta inativa ou deletada")
-        # Perfil sempre refrescado pelo Google a cada login (foto/nome atuais).
-        user.email = email or user.email
-        user.name = name or user.name
-        user.picture_url = picture
-        db.commit()
-        db.refresh(user)
+    if user.status != "active":
+        raise HTTPException(status_code=403, detail="Conta inativa ou deletada")
 
     if user.role == "admin":
-        # Adota projetos órfãos (criados por token de máquina antes do 1º login).
+        # Adota projetos órfãos (user_id NULL) — o admin é o dono deles.
         db.query(models.Project).filter(models.Project.user_id.is_(None)).update(
             {models.Project.user_id: user.id}
         )
         db.commit()
 
-    return schemas.LoginResponse(
-        token=create_session_token(user),
-        user=schemas.UserOut.model_validate(user),
+    return _issue_tokens(db, user)
+
+
+@router.post(
+    "/refresh",
+    response_model=schemas.LoginResponse,
+    summary="Refresh session",
+    response_description=(
+        "Troca um refresh token válido por um novo par (rotação: o token "
+        "antigo é revogado). Público (não exige Bearer)."
+    ),
+    responses={**UNAUTHORIZED, **FORBIDDEN, **VALIDATION},
+)
+def refresh(req: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    token_hash = _hash_refresh(req.refresh_token)
+    session = (
+        db.query(models.UserSession)
+        .filter(
+            models.UserSession.token_hash == token_hash,
+            models.UserSession.revoked_at.is_(None),
+            models.UserSession.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
     )
+    if session is None:
+        raise HTTPException(status_code=401, detail="Refresh token inválido ou expirado")
+
+    user = db.get(models.User, session.user_id)
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=401, detail="Sessão inválida")
+
+    # Rotação: revoga a sessão atual e emite outra (token antigo morre).
+    session.revoked_at = datetime.now(timezone.utc)
+    db.commit()
+    return _issue_tokens(db, user)
+
+
+@router.post(
+    "/logout",
+    status_code=204,
+    summary="Logout",
+    response_description=(
+        "Revoga o refresh token (encerra a sessão do dispositivo). "
+        "Idempotente: sempre 204, mesmo com token já revogado."
+    ),
+    responses={**VALIDATION},
+)
+def logout(req: schemas.LogoutRequest, db: Session = Depends(get_db)):
+    revoke_refresh_token(db, req.refresh_token)
